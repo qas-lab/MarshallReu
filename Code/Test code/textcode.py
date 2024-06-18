@@ -2,22 +2,8 @@ import pandas as pd
 import numpy as np
 from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
-
-dfTrain = pd.read_csv('train.csv')
-dfTest = pd.read_csv('test.csv')
-
-df = pd.read_csv("hf://datasets/AliArshad/Bugzilla_Eclipse_Bug_Reports_Dataset/filtered_data.xlsx - Sheet1.csv")
-
-vec = CountVectorizer( max_df=0.95, stop_words='english', ngram_range=(1,1))
-x = vec.fit_transform(df)
-
-
-n_topics = 7
-lda = LatentDirichletAllocation(n_components=n_topics, max_iter=3)
-lda.fit(x)
-
-test = vec.get_feature_names_out()
 
 # Print the top words for each topic
 def print_top_words(model, feature_names, n_top_words):
@@ -27,12 +13,32 @@ def print_top_words(model, feature_names, n_top_words):
         print(message)
     print()
 
-# Number of words to print per topic
-n_top_words = 10
+df = pd.read_csv("dataset.csv")
 
-# Get feature names (words) from the vectorizer
-feature_names = vec.get_feature_names_out()
+summary = df['Summary']
+dev = df['Assignee']    # Bug Fixers
 
-# Print the topics found by LDA
-print(f"Top {n_top_words} words per topic:\n")
-print_top_words(lda, feature_names, n_top_words)
+x, y = train_test_split(summary, shuffle=True, test_size=0.2, random_state=42)
+
+vec = CountVectorizer(max_df=0.95, stop_words='english')
+
+train = vec.fit_transform(x)
+test = vec.transform(y)
+
+numTopics = 10
+
+#lda model
+lda = LatentDirichletAllocation(n_components=numTopics, random_state=42)
+trainng = lda.fit(train)
+
+print_top_words(lda, vec.get_feature_names_out(), 10)
+
+testing = lda.transform(test)
+
+#printing topic predictions and the accuracy of it
+for i, topic in enumerate(testing[:10]):
+    maxValue = np.max(topic)
+    index = np.argmax(topic)
+    print(f"Test Topic #{i} Topic {index} Distrubtion {maxValue}")
+
+#Need to run a text classifier on the topics so that I can output the values.......(Thursday)
