@@ -49,4 +49,5 @@ nbClass.fit(trainLda,x)
 predict = nbClass.predict(testing)
 
 acc = accuracy_score(y, predict)
+print()
 print(f'Naive Bayes Score: {acc}')
