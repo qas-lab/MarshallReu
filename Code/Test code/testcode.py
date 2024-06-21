@@ -1,16 +1,10 @@
 import pandas as pd
 import numpy as np
-import nltk
-from nltk.stem.wordnet import WordNetLemmatizer     #lemmentizing words
-from nltk.tokenize import word_tokenize             #tokenize words before applying lemmatization
 from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
-nltk.download('wordnet')
-nltk.download('punkt')
-
 
 # Print the top words for each topic
 def print_top_words(model, feature_names, n_top_words):
@@ -20,19 +14,9 @@ def print_top_words(model, feature_names, n_top_words):
         print(message)
     print()
 
-#function for lemmatization (Fix the for loops to what I write)
-def lemmatizeText(text):
-    tokens = word_tokenize(text)
-    lemmatized_tokens = [lemmatizer.lemmatize(token) for token in tokens]
-    return ' '.join(lemmatized_tokens)
-
-
 df = pd.read_csv("dataset.csv")
-summary = df['Summary'].values.astype('U')
 
-# Lemmatize all words in documents.
-lemmatizer = WordNetLemmatizer()
-df['lemmatizeText'] = df['summary'].apply(lemmatizeText)
+summary = df['Summary']
 
 x, y = train_test_split(summary, shuffle=True, test_size=0.2, random_state=42)
 
