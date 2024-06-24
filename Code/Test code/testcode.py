@@ -44,6 +44,8 @@ for i, topic in enumerate(testing[:10]):
     print(f"Bug Report #{i} Topic {index} Distrubtion {maxValue}")
 
 # #Added text classifier, needs to be tuned more
+#Need to do the text classifier on each bug report.
+
 # print()
 # nbClass = MultinomialNB()
 # nbClass.fit(trainLda,x)
