@@ -26,7 +26,7 @@ def lemmatizeText(text):
     return ' '.join(lemmatized_tokens)
 
 df = pd.read_csv("eclipse_jdt.csv")
-df['combine'] = df['Description'].astype(str) + ' ' + df['Title'].astype(str) # + ' ' + df['Component'].astype(str)
+df['combine'] = df['Description'].astype(str) + ' ' + df['Title'].astype(str) + ' ' + df['Component'].astype(str)
 
 # Lemmatize all words in documents.
 lemmatizer = WordNetLemmatizer()
@@ -69,11 +69,11 @@ count += 1
 average = average / count 
 print(f'\nThe average is: {average}\n')
 
-# #Added text classifier, needs to be tuned more
-# print()
-# nbClass = MultinomialNB()
-# nbClass.fit(trainLda,x)
-# predict = nbClass.predict(testing)
+#Added text classifier, needs to be tuned more
+print()
+nbClass = MultinomialNB()
+nbClass.fit(trainLda,x)
+predict = nbClass.predict(testing)
 
-# acc = accuracy_score(y, predict)
-# print(f'Naive Bayes Score: {acc}')
+acc = accuracy_score(y, predict)
+print(f'Naive Bayes Score: {acc}')

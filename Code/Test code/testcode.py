@@ -43,11 +43,11 @@ for i, topic in enumerate(testing[:10]):
     index = np.argmax(topic)
     print(f"Bug Report #{i} Topic {index} Distrubtion {maxValue}")
 
-#Added text classifier, needs to be tuned more
-print()
-nbClass = MultinomialNB()
-nbClass.fit(trainLda,x)
-predict = nbClass.predict(testing)
+# #Added text classifier, needs to be tuned more
+# print()
+# nbClass = MultinomialNB()
+# nbClass.fit(trainLda,x)
+# predict = nbClass.predict(testing)
 
-acc = accuracy_score(y, predict)
-print(f'Naive Bayes Score: {acc}')
+# acc = accuracy_score(y, predict)
+# print(f'Naive Bayes Score: {acc}')
