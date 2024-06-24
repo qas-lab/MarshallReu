@@ -5,7 +5,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import MultinomialNB, CategoricalNB, ComplementNB
 from sklearn.linear_model import LogisticRegression # See what this is
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import classification_report
 
 stops = list(stopwords.words('english'))
 
@@ -43,19 +43,22 @@ countTest = countVec.transform(yTest)
 #multinomial
 multiVec.fit(train, xTrain)
 predicted = multiVec.predict(test)
-acc = accuracy_score(xTest, predicted)
-print(f'Multinominal Accuracy Score is: {acc} \n')
-multiVec.score()        #Finishing adding this code
+report = classification_report(xTest, predicted)
+print(f'Multinominal Report: \n {report}')
+
+
 
 #complement
 compTrain = compVec.fit(train, xTrain)
 compPredict = compTrain.predict(test)
-accComp = accuracy_score(xTest, compPredict)
-print(f'\nComplementNB Accuracy Score is : {accComp} \n')
+compReport = classification_report(xTest, compPredict)
+print(f'Complement Report: \n{compReport}')
 
 
+# NEED TO FINISH THE CATEGORICAL REPORT SO THAT WE CAN COMPARE
 # #categorical
 # catTrain = catVec.fit(countTrain.toarray(), xTrain)
 # catPredict = catVec.predict(countTest.toarray())
-# catAcc = accuracy_score(xTest, catPredict)
-# print(f'Categorical Accuracy score: {catAcc}\n')
+# catReport = classification_report(xTest, catPredict)
+# print(f'Categorical Report: \n {catReport}')
+
