@@ -8,6 +8,8 @@ from sklearn.neural_network import MLPClassifier #added this to try out
 from sklearn.metrics import classification_report, accuracy_score
 from nltk.stem.wordnet import WordNetLemmatizer     #lemmentizing words
 from nltk.tokenize import word_tokenize             #tokenize words before applying lemmatization
+# from sklearn.ensemble import RandomForestClassifier
+
 
 #function for lemmatization (Fix the for loops to what I write)
 def lemmatizeText(text):
@@ -34,7 +36,7 @@ multiVec = MultinomialNB()
 compVec = ComplementNB()
 clf = MLPClassifier()
 
-xTrain, xTest, yTrain, yTest = train_test_split(trueLabel, text, test_size=0.20, random_state=42)
+xTrain, xTest, yTrain, yTest = train_test_split(trueLabel, text, test_size=0.2, random_state=42)
 
 vec = TfidfVectorizer(stop_words=stops)             #Term Freq
 train = vec.fit_transform(yTrain)
@@ -51,6 +53,13 @@ compTrain = compVec.fit(train, xTrain)
 compPredict = compTrain.predict(test)
 compReport = classification_report(xTest, compPredict)
 print(f'Complement Report: \n{compReport}')
+
+# #clf
+# clf = RandomForestClassifier(n_estimators=100)
+# clfTrain = clf.fit(train, xTrain)
+# clfPred = clf.predict(test)
+# clfReport = classification_report(xTest, clfPred)
+# print(f'CLF Report: {clfReport}\n')
 
 # #mlp 
 # clf.fit(train, xTrain)
