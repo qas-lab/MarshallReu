@@ -1,55 +1,67 @@
 import pandas as pd
-import numpy as np
+import re
 from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.naive_bayes import MultinomialNB
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+from nltk.corpus import stopwords
+from nltk.stem.wordnet import WordNetLemmatizer
+from nltk.tokenize import word_tokenize
 
-# Print the top words for each topic
-def print_top_words(model, feature_names, n_top_words):
-    for topic_idx, topic in enumerate(model.components_):
-        message = f"Topic #{topic_idx}: "
-        message += " ".join([feature_names[i] for i in topic.argsort()[:-n_top_words - 1:-1]])
+#function for lemmztizing
+def wordLem(text):
+
+    tokens = word_tokenize(text)
+    lemToken = [lem.lemmatize(tokens) for tokens in tokens]
+
+    return ' '.join(lemToken)
+
+#function for cleaning data
+def cleanText(text):
+
+    re.sub(r'\S([A-Za-z]*\s*)\d{1,2}:\d{2}\s*[APap][Mm]', '', text)
+    text = re.sub(r'\d+', '', text)
+    text = text.lower()
+    text = text.strip()
+
+    return text
+
+#function for printing topics
+def printTopics(model, featNames, topics):
+
+    for topicIdx, topic in enumerate(model.components_):
+        message = f'Topic #{topicIdx}'
+        index = topic.argsort()[:-topics -1:-1]
+        message += ' '.join([featNames[i] for i in index if i < len(featNames)])
         print(message)
+
     print()
 
-df = pd.read_csv("dataset.csv")
 
-summary = df['Summary']
+#variables to use within code
+stops = list(stopwords.words('english'))
+numTopics = 6
 
-x, y = train_test_split(summary, shuffle=True, test_size=0.2, random_state=42)
-
-vec = CountVectorizer(max_df=0.95,  stop_words='english')
-
-train = vec.fit_transform(x)
-test = vec.transform(y)
-
-numTopics = 10
-
-#lda model
-#switching max_iter from 10 to 6 gives slightly better prediction accuracy
+#Creating instances of classes
+lem = WordNetLemmatizer()
 lda = LatentDirichletAllocation(n_components=numTopics, random_state=42)
-training = lda.fit(train)
+vec = CountVectorizer(stop_words=stops)
 
-print_top_words(lda, vec.get_feature_names_out(), 10)
+#opening file and removing duplicate reports
+df = pd.read_csv('eclipse_jdt.csv')
+dupl = df.dropna(subset=['Duplicated_issue'])
+newData = df.drop(index=dupl.index)
+text = newData['Description'].astype(str).apply(cleanText).apply(wordLem)
+trueLabel = newData['Component'].astype(str)
 
-trainLda = lda.transform(train)
-testing = lda.transform(test)
+#splitting testing data
+#xTrain, xTest, yTrain, yTest = train_test_split(trueLabel, text, shuffle=True, random_state=42, test_size=0.2)
 
-#printing topic predictions and the accuracy of it
-for i, topic in enumerate(testing[:10]):
-    maxValue = np.max(topic)
-    index = np.argmax(topic)
-    print(f"Bug Report #{i} Topic {index} Distrubtion {maxValue}")
+train = vec.fit_transform(text)
 
-# #Added text classifier, needs to be tuned more
-#Need to do the text classifier on each bug report.
+model = lda.fit_transform(train)
 
-# print()
-# nbClass = MultinomialNB()
-# nbClass.fit(trainLda,x)
-# predict = nbClass.predict(testing)
+names = list(vec.get_feature_names_out())
 
-# acc = accuracy_score(y, predict)
-# print(f'Naive Bayes Score: {acc}')
+printTopics(lda, names, 10)
+print()
+
