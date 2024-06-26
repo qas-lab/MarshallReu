@@ -11,6 +11,8 @@ from sklearn.metrics import classification_report, accuracy_score
 from nltk.stem.wordnet import WordNetLemmatizer     #lemmentizing words
 from nltk.tokenize import word_tokenize             #tokenize words before applying lemmatization
 from sklearn.ensemble import RandomForestClassifier # CLF classifier
+from sklearn.linear_model import LogisticRegression # Logistic Regression
+from sklearn.ensemble import StackingClassifier
 
 
 #function for lemmatization
@@ -29,8 +31,8 @@ def clean_text(text):
     text = removeTimeStamp(text)                                      # Remove timestamps
     text = text.lower()                                               # Convert to lowercase
     text = re.sub(r'\d+', '', text)                                   # Remove numbers
-    text = re.sub(r'^\S+', '', text).lstrip()                         
-    #text = text.translate(str.maketrans('', '', string.punctuation))  # Remove punctuation NEED TO AD THIS BACK EVENTUALLY
+    #text = re.sub(r'^\S+', '', text).lstrip()                         
+    #text = text.translate(str.maketrans('', '', string.punctuation))  # Remove punctuation 
     text = text.strip()                                               # Remove leading/trailing whitespace
     return text
 
@@ -49,24 +51,25 @@ lemmatizer = WordNetLemmatizer()
 text = newData['Description'].astype(str).apply(clean_text).apply(lemmatizeText)
 trueLabel = newData['Component'].astype(str).apply(lemmatizeText)
 
-print(text)
+#print(text) #Only for looking at the word strips
 
-multiVec = MultinomialNB()
 compVec = ComplementNB()
-clf = MLPClassifier()
+clf = RandomForestClassifier()
+mlp = MLPClassifier(max_iter=500)
+logisticReg = LogisticRegression(max_iter=2000)
+
+# Define a Stacking Classifier
+stackingClf = StackingClassifier(estimators=[
+    ('clf', clf),
+    ('mlp', mlp)
+], final_estimator=logisticReg)
 
 xTrain, xTest, yTrain, yTest = train_test_split(trueLabel, text, test_size=0.2, random_state=42)
 
-vec = CountVectorizer(stop_words=stops)
-#vec = TfidfVectorizer(stop_words=stops)             #Term Freq
+#vec = CountVectorizer(stop_words=stops)              #count Freq
+vec = TfidfVectorizer(stop_words=stops)             #Term Freq
 train = vec.fit_transform(yTrain)
 test = vec.transform(yTest)
-
-#multinomial
-multiVec.fit(train, xTrain)
-predicted = multiVec.predict(test)
-report = classification_report(xTest, predicted)
-print(f'Multinominal Report: \n {report}')
 
 #complement
 compTrain = compVec.fit(train, xTrain)
@@ -75,16 +78,25 @@ compReport = classification_report(xTest, compPredict)
 print(f'Complement Report: \n{compReport}')
 
 #clf
-clf = RandomForestClassifier(n_estimators=100)
 clfTrain = clf.fit(train, xTrain)
 clfPred = clf.predict(test)
 clfReport = classification_report(xTest, clfPred)
 print(f'CLF Report: {clfReport}\n')
 
 #mlp 
-clf.fit(train, xTrain)
-clfPredict = clf.predict(test)
+mlp.fit(train, xTrain)
+clfPredict = mlp.predict(test)
 clfReport = classification_report(xTest, clfPredict)
 clfScroe = accuracy_score(xTest, clfPredict)
 print(f'MLP Report: \n{clfScroe} \n')
 
+# # Train and evaluate the Stacking Classifier
+# stackingClf.fit(train, xTrain)
+# stackingPredict = stackingClf.predict(test)
+# print(f'Stacking Classifier Report:\n{classification_report(xTest, stackingPredict)}')
+
+# Logistic Regression
+logisticReg.fit(train, xTrain)
+logisticPred = logisticReg.predict(test)
+logisticReport = classification_report(xTest, logisticPred)
+print(f'Logistic Regression Baseline: \n{logisticReport} \n')
