@@ -219,4 +219,6 @@ for epochs in range(EPOCHS):
     train(epochs)
 
 #valadation
-print('This is the valadation section to ')
+acc = valid(model, testing_loader)
+print('This is the valadation section to print the accuracy of the model')
+print('Accuracy on the test data = %0.2f%%', acc)
