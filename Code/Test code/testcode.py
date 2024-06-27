@@ -29,7 +29,7 @@ def cleanText(text):
 def printTopics(model, featNames, topics):
 
     for topicIdx, topic in enumerate(model.components_):
-        message = f'Topic #{topicIdx}'
+        message = f'Topic #{topicIdx}: \t'
         index = topic.argsort()[:-topics -1:-1]
         message += ' '.join([featNames[i] for i in index if i < len(featNames)])
         print(message)
@@ -43,8 +43,8 @@ numTopics = 6
 
 #Creating instances of classes
 lem = WordNetLemmatizer()
-lda = LatentDirichletAllocation(n_components=numTopics, random_state=42)
-vec = CountVectorizer(stop_words=stops)
+lda = LatentDirichletAllocation(n_components=numTopics, random_state=42, doc_topic_prior=0.1, topic_word_prior=0.1)
+vec = CountVectorizer(stop_words=stops, max_df=0.90)
 
 #opening file and removing duplicate reports
 df = pd.read_csv('eclipse_jdt.csv')

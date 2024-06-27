@@ -27,22 +27,20 @@ def removeTimeStamp(text):
     timestamp_pattern = r'\S([A-Za-z]*\s*)\d{1,2}:\d{2}\s*[APap][Mm]'
     return re.sub(timestamp_pattern, '', text)
 
-#function for spell checking
+# Function for spell checking
 def checkSpelling(text):
     spell = SpellChecker()
-    words = text.split()
-    correctWords = [spell.correction(word) for word in words]
-    return ' '.join(correctWords)
+    corrected_text = [spell.correction(word) for word in text.split()]
+    return ' '.join(map(str, corrected_text))
 
 # Function for text cleaning
 def clean_text(text):
     text = removeTimeStamp(text)                                      # Remove timestamps
     text = text.lower()                                               # Convert to lowercase
-    text = re.sub(r'\d+', '', text)                                   # Remove numbers
-    #text = re.sub(r'^\S+', '', text).lstrip()                         
+    text = re.sub(r'\d+', '', text)                                   # Remove numbers                       
     text = text.translate(str.maketrans('', '', string.punctuation))  # Remove punctuation
-    text = checkSpelling(text) 
-    text = text.strip()                                                # Remove leading/trailing whitespace
+    text = text.strip()                                               # Remove leading/trailing whitespace
+    # text = checkSpelling(text) 
     return text
 
 stops = list(stopwords.words('english'))
@@ -61,23 +59,23 @@ text = newData['Description'].astype(str).apply(clean_text).apply(lemmatizeText)
 trueLabel = newData['Component'].astype(str).apply(lemmatizeText)
 
 
-print(text) #Only for looking at the word strips
+# print(text) #Only for looking at the word strips
 
 # compVec = ComplementNB()
 # clf = RandomForestClassifier()
 # mlp = MLPClassifier()
 # logisticReg = LogisticRegression()
 
-# # # Define a Stacking Classifier
-# # stackingClf = StackingClassifier(estimators=[
-# #     ('clf', clf),
-# #     ('mlp', mlp)
-# # ], final_estimator=logisticReg)
+# # Define a Stacking Classifier
+# stackingClf = StackingClassifier(estimators=[
+#     ('clf', clf),
+#     ('mlp', mlp)
+# ], final_estimator=logisticReg)
 
 # xTrain, xTest, yTrain, yTest = train_test_split(trueLabel, text, test_size=0.2, random_state=42)
 
-# #vec = CountVectorizer(stop_words=stops)              #count Freq
-# vec = TfidfVectorizer(stop_words=stops)               #Term Freq
+# vec = CountVectorizer(stop_words=stops)              #count Freq
+# #vec = TfidfVectorizer(stop_words=stops)               #Term Freq
 # train = vec.fit_transform(yTrain)
 # test = vec.transform(yTest)
 
@@ -93,12 +91,12 @@ print(text) #Only for looking at the word strips
 # clfReport = classification_report(xTest, clfPred)
 # print(f'CLF Report: {clfReport}\n')
 
-# # #mlp 
-# # mlp.fit(train, xTrain)
-# # clfPredict = mlp.predict(test)
-# # clfReport = classification_report(xTest, clfPredict)
-# # clfScroe = accuracy_score(xTest, clfPredict)
-# # print(f'MLP Report: \n{clfScroe} \n')
+# #mlp 
+# mlp.fit(train, xTrain)
+# clfPredict = mlp.predict(test)
+# clfReport = classification_report(xTest, clfPredict)
+# clfScroe = accuracy_score(xTest, clfPredict)
+# print(f'MLP Report: \n{clfScroe} \n')
 
 # # # Train and evaluate the Stacking Classifier
 # # stackingClf.fit(train, xTrain)
