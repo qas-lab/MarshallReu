@@ -8,30 +8,31 @@ from torch.utils.data import Dataset, DataLoader
 
 # The following code will use the GPU if the GPU is available
 from torch import cuda
-device = 'cuda' if cuda.is_available() else 'cpu'
+device = torch.device('cuda' if cuda.is_available() else 'cpu')
 
 # Class for triaging, setup from google colab review of how to use DistilBert
 class Triage(Dataset):
 
-    def __init__(self, dataframe, tokenizer, maxLen):
+    def __init__(self, dataframe, tokenizer, max_len):
         
         self.len = len(dataframe)
-        self.dataframe = dataframe
+        self.data = dataframe
         self.tokenizer = tokenizer
-        self.maxLen = maxLen
+        self.max_len = max_len
     
+    #.Description is chagned out with the text column that you are reading
     def __getitem__(self, index):
 
-        title = str(self.data.TITLE[index])
+        title = str(self.data.Component[index])
         title = ' '.join(title.split())
         inputs = self.tokenizer.encode_plus(
             title,
             None,
-            add_special_tokens = True,
-            maxLength = self.maxLen,
-            padToMaxLength = True,
-            returnTokenTypeId = True,
-            truncation = True
+            add_special_tokens=True,
+            max_length=self.max_len,
+            pad_to_max_length=True,
+            return_token_type_ids=True,
+            truncation=True
         )
         ids = inputs['input_ids']
         mask = inputs['attention_mask']
@@ -39,7 +40,7 @@ class Triage(Dataset):
         return {
             'ids': torch.tensor(ids, dtype=torch.long),
             'mask': torch.tensor(mask, dtype=torch.long),
-            'targets': torch.tensor(self.data.ENCODE_CAT[index], dtype=torch.long)
+            'targets': torch.tensor(self.data.Component[index], dtype=torch.long)
         }
     
     def __len__(self):
@@ -53,11 +54,11 @@ class DistillBertClass(torch.nn.Module):
         self.l1 = DistilBertModel.from_pretrained('distilbert-base-cased')
         self.pre_classifier = torch.nn.Linear(768, 768)
         self.dropout = torch.nn.Dropout(0.3)
-        self.classifier = torch.nn.Linear(768,4)
+        self.classifier = torch.nn.Linear(768,768)
 
-    def forward(self, inputs_ids, attention_mask):
+    def forward(self, input_ids, attention_mask):
 
-        output_1 = self.l1(inputs_ids = inputs_ids, attention_mask = attention_mask)
+        output_1 = self.l1(input_ids = input_ids, attention_mask = attention_mask)
         hidden_state = output_1[0]
         pooler = hidden_state[:, 0]
         pooler = self.pre_classifier(pooler)
@@ -91,7 +92,7 @@ def train(epoch):
     for _,data in enumerate(training_loader, 0):
         ids    = data['ids'].to(device, dtype = torch.long)
         mask   = data['mask'].to(device, dtype = torch.long)
-        target = data['target'].to(device, dtype = torch.long)
+        target = data['targets'].to(device, dtype = torch.long)
 
         output    = model(ids, mask)
         loss      = loss_function(output, target)
@@ -102,7 +103,7 @@ def train(epoch):
         nb_tr_step += 1
         nb_tr_example += target.size(0)
 
-        if _%5000 == 0:
+        if _% 5000 == 0:
             loss_step = tr_loss, nb_tr_step
             accu_step = (n_correct * 100) / nb_tr_example
             print(f'Training Loss per 5000 steps: {loss_step}')
@@ -175,7 +176,8 @@ myDict = {
 encodeDict = {}
 
 df['Component'] = df['Component'].apply(lambda x: updateCat(x))
-df['Description'] = df['Description'].apply(lambda x: encodeCat(x))
+df['Component'] = df['Component'].apply(lambda x: encodeCat(x))
+#df['Description'] = df['Description'].apply(lambda x: encodeCat(x))
 
 train_size = 0.8
 train_dataset = df.sample(frac=train_size, random_state=200)
