@@ -186,7 +186,9 @@ encodeDict = {}
 
 df['Component'] = df['Component'].apply(lambda x: updateCat(x))
 df['Component'] = df['Component'].apply(lambda x: encodeCat(x))
-#df['Description'] = df['Description'].apply(lambda x: updateCat(x))
+
+# df['Description'] = df['Description'].apply(lambda x: updateCat(x))
+# df['Description'] = df['Description'].apply(lambda x: encodeCat(x))
 
 train_size = 0.8
 train_dataset = df.sample(frac=train_size, random_state=200)
@@ -233,7 +235,7 @@ optimizer = torch.optim.Adam(params = model.parameters(), lr = LEARNING_RATE)
 for epochs in range(EPOCHS):
     train(epochs)
 
-# #valadation
-# acc = valid(model, testing_loader)
-# print('This is the valadation section to print the accuracy of the model')
-# print('Accuracy on the test data = %0.2f%%', acc)
+#valadation
+acc = valid(model, testing_loader)
+print('This is the valadation section to print the accuracy of the model')
+print('Accuracy on the test data = %0.9f%%', acc)

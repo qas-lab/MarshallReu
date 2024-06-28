@@ -23,47 +23,42 @@ def lemmatizeText(text):
     return ' '.join(lemmatized_tokens)
 
 #removing time stamp
-def removeTimeStamp(text):
-    timestamp_pattern = r'\S([A-Za-z]*\s*)\d{1,2}:\d{2}\s*[APap][Mm]'
+def remove(text):
+    timestamp_pattern = r'\([A-Z0-9]+\)'
     return re.sub(timestamp_pattern, '', text)
 
-# Function for spell checking
-def checkSpelling(text):
-    spell = SpellChecker()
-    corrected_text = [spell.correction(word) for word in text.split()]
-    return ' '.join(map(str, corrected_text))
 
 # Function for text cleaning
 def clean_text(text):
-    text = removeTimeStamp(text)                                      # Remove timestamps
+    text = remove(text)                                               # Remove stamps
     text = text.lower()                                               # Convert to lowercase
     text = re.sub(r'\d+', '', text)                                   # Remove numbers                       
     text = text.translate(str.maketrans('', '', string.punctuation))  # Remove punctuation
-    text = text.strip()                                               # Remove leading/trailing whitespace
-    # text = checkSpelling(text) 
+    text = text.strip()                                               # Remove leading/trailing whitespace 
     return text
 
 stops = list(stopwords.words('english'))
 
 # Load your dataset
-df = pd.read_csv("eclipse_jdt.csv")
-
-#attepting to drop dups
-dups = df.dropna(subset=['Duplicated_issue'])
-newData = df.drop(index=dups.index)
+df = pd.read_csv("dataset.csv")
 
 #lemmatization
 lemmatizer = WordNetLemmatizer()
 
-text = newData['Description'].astype(str).apply(clean_text).apply(lemmatizeText)
-trueLabel = newData['Component'].astype(str).apply(lemmatizeText)
+summary = df['Summary'].astype(str).apply(clean_text).apply(lemmatizeText)
+#text2 = df['Product'].astype(str).apply(clean_text).apply(lemmatizeText)
+trueLabel = df['Component'].astype(str) 
 
+#text = summary + '' + df['Product'].astype(str)
+
+with open('story.txt', 'r', encoding='utf-8') as file:
+    text = file.read()
 
 # print(text) #Only for looking at the word strips
 
-# compVec = ComplementNB()
-# clf = RandomForestClassifier()
-# mlp = MLPClassifier()
+compVec = ComplementNB()
+#clf = RandomForestClassifier()
+#mlp = MLPClassifier()
 # logisticReg = LogisticRegression()
 
 # # Define a Stacking Classifier
@@ -72,29 +67,29 @@ trueLabel = newData['Component'].astype(str).apply(lemmatizeText)
 #     ('mlp', mlp)
 # ], final_estimator=logisticReg)
 
-# xTrain, xTest, yTrain, yTest = train_test_split(trueLabel, text, test_size=0.2, random_state=42)
+xTrain, xTest, yTrain, yTest = train_test_split(trueLabel, text, test_size=0.2, random_state=42, shuffle=True)
 
-# vec = CountVectorizer(stop_words=stops)              #count Freq
-# #vec = TfidfVectorizer(stop_words=stops)               #Term Freq
-# train = vec.fit_transform(yTrain)
-# test = vec.transform(yTest)
+#vec = CountVectorizer(stop_words=stops)              #count Freq
+vec = TfidfVectorizer(stop_words=stops)               #Term Freq
+train = vec.fit_transform(yTrain)
+test = vec.transform(yTest)
 
-# #complement
-# compTrain = compVec.fit(train, xTrain)
-# compPredict = compTrain.predict(test)
-# compReport = classification_report(xTest, compPredict)
-# print(f'Complement Report: \n{compReport}')
+#complement
+compTrain = compVec.fit(train, xTrain)
+compPredict = compTrain.predict(test)
+compReport = classification_report(xTest, compPredict, zero_division=0)
+print(f'Complement Report: \n{compReport}')
 
 # #clf
 # clfTrain = clf.fit(train, xTrain)
 # clfPred = clf.predict(test)
 # clfReport = classification_report(xTest, clfPred)
-# print(f'CLF Report: {clfReport}\n')
+# print(f'CLF Report: \n{clfReport}\n')
 
 # #mlp 
 # mlp.fit(train, xTrain)
 # clfPredict = mlp.predict(test)
-# clfReport = classification_report(xTest, clfPredict)
+# clfReport = classification_report(xTest, clfPredict, zero_division=0)
 # clfScroe = accuracy_score(xTest, clfPredict)
 # print(f'MLP Report: \n{clfScroe} \n')
 
