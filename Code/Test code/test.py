@@ -30,7 +30,7 @@ class Triage(Dataset):
             None,
             add_special_tokens=True,
             max_length=self.max_len,
-            pad_to_max_length=True,
+            padding='max_length',
             return_token_type_ids=True,
             truncation=True
         )
@@ -108,12 +108,13 @@ def train(epoch):
             accu_step = (n_correct * 100) / nb_tr_example
             print(f'Training Loss per 5000 steps: {loss_step}')
             print(f'Training Accuracy per 5000 steps: {accu_step}')
+            print()
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()    #only for GPU
 
-    print(f'The total Accuracy for Epock {epoch} : {(n_correct*100)/nb_tr_example}')
+    print(f'The total Accuracy for Epoch {epoch} : {(n_correct*100)/nb_tr_example}')
     epoch_loss = tr_loss/nb_tr_step
     epoch_acc = (n_correct * 100) / nb_tr_example
     print(f'Training Loss Epoch: {epoch_loss}')
@@ -124,7 +125,12 @@ def train(epoch):
 # validate 
 def valid(model, testing_loader):
     model.eval()
-    n_correct = 0; n_wrong = 0; total = 0
+    n_correct = 0 
+    n_wrong = 0
+    total = 0
+    tr_loss = 0
+    nb_tr_steps = 0
+    nb_tr_examples = 0
 
     with torch.no_grad():
         for _, data in enumerate(testing_loader, 0):
@@ -145,6 +151,7 @@ def valid(model, testing_loader):
                 accu_step = (n_correct * 100) / nb_tr_examples
                 print(f'Validation Loss per 100 steps: {loss_step}')
                 print(f'Validation Accuracy per 100 steps: {accu_step}')
+                print()
         
     epoch_loss = tr_loss/nb_tr_steps
     epoch_acc = (n_correct * 100) / nb_tr_examples
@@ -165,19 +172,21 @@ df = pd.read_csv('eclipse_jdt.csv')
 df = df[['Description','Component']]
 
 myDict = {
+
     'Debug' : 'Debug',
     'UI'    : 'UI',
     'Core'  : 'Core',
     'Text'  : 'Text',
     'Doc'   : 'Doc',
     'APT'   : 'Apt'
+
 }
 
 encodeDict = {}
 
 df['Component'] = df['Component'].apply(lambda x: updateCat(x))
 df['Component'] = df['Component'].apply(lambda x: encodeCat(x))
-#df['Description'] = df['Description'].apply(lambda x: encodeCat(x))
+#df['Description'] = df['Description'].apply(lambda x: updateCat(x))
 
 train_size = 0.8
 train_dataset = df.sample(frac=train_size, random_state=200)
@@ -193,15 +202,19 @@ training_set = Triage(train_dataset, tokenizer, MAX_LEN)
 testing_set = Triage(test_dataset, tokenizer, MAX_LEN)
 
 train_params = {
+
     'batch_size' : TRAIN_BRANCH_SIZE,
     'shuffle'    : True,
     'num_workers' : 0
+
 }
 
 test_params = {
+
     'batch_size' : VALID_BRANCH_SIZE,
     'shuffle'    : True,
     'num_workers' : 0
+    
 }
 
 # Data Loader class
@@ -220,7 +233,7 @@ optimizer = torch.optim.Adam(params = model.parameters(), lr = LEARNING_RATE)
 for epochs in range(EPOCHS):
     train(epochs)
 
-#valadation
-acc = valid(model, testing_loader)
-print('This is the valadation section to print the accuracy of the model')
-print('Accuracy on the test data = %0.2f%%', acc)
+# #valadation
+# acc = valid(model, testing_loader)
+# print('This is the valadation section to print the accuracy of the model')
+# print('Accuracy on the test data = %0.2f%%', acc)
