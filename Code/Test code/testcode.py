@@ -1,97 +1,57 @@
+# # Temporily testing gensim lda
 import pandas as pd
 import re
 import string
-from sklearn.decomposition import LatentDirichletAllocation
-from sklearn.feature_extraction.text import CountVectorizer,TfidfVectorizer
-from sklearn.model_selection import train_test_split
+import gensim
+from gensim import corpora
+from gensim.models import LdaModel
 from nltk.corpus import stopwords
-from nltk.stem.wordnet import WordNetLemmatizer
+from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 
-
-#function for lemmztizing
-def wordLem(text):
-
-    tokens = word_tokenize(text)
-    lemToken = [lem.lemmatize(tokens) for tokens in tokens]
-
-    return ''.join(lemToken)
+# Initialize the lemmatizer
+lem = WordNetLemmatizer()
 
 # Function for text cleaning
 def cleanText(text):
-    text = text.lower()                                                 # Convert to lowercase
-    text = re.sub(r'\d+', '', text)                                     # Remove numbers                       
-    text = text.translate(str.maketrans('', '', string.punctuation))   # Remove punctuation
-    #text = text.strip()                                                # Remove leading/trailing whitespace
-    #text = checkSpelling(text) 
+    text = text.lower()                                                    # Convert to lowercase
+    text = re.sub(r'\d+', ' ', text)                                       # Remove numbers
+    text = re.sub(r'\b[nan]', ' ', text)                                   # Remove 'nan'
+    text = text.translate(str.maketrans('', '', string.punctuation))       # Remove punctuation
     return text
 
-#function for printing topics
-def printTopics(model, featNames, topics):
+# Function for lemmatizing
+def wordLem(text):
+    tokens = word_tokenize(text)
+    lemToken = [lem.lemmatize(token) for token in tokens]
+    return lemToken
 
-    for topicIdx, topic in enumerate(model.components_):
-        message = f'Topic #{topicIdx}: \t'
-        index = topic.argsort()[:-topics -1:-1]
-        message += ' '.join([featNames[i] for i in index if i < len(featNames)])
-        print(message)
-
-    print()
-
-#variables to use within code
-stops = list(stopwords.words('english'))
-numTopics = 6
-
-#Creating instances of classes
-lem = WordNetLemmatizer()
-lda = LatentDirichletAllocation(n_components=numTopics, random_state=42, doc_topic_prior=0.6)
-vec = TfidfVectorizer(stop_words=stops, max_df=0.95)
-
-#opening file and removing duplicate reports
+# Opening file and removing duplicate reports
 df = pd.read_csv('eclipse_jdt.csv')
 dupl = df.dropna(subset=['Duplicated_issue'])
 newData = df.drop(index=dupl.index)
+
+# Clean and lemmatize text
 text = newData['Description'].astype(str).apply(cleanText).apply(wordLem)
-#trueLabel = newData['Component'].astype(str)
 
-#splitting testing data
-train, test = train_test_split(text, shuffle=True, random_state=42, test_size=0.2)
+# Create a dictionary and corpus for LDA
+text_list = text.tolist()  # Convert to list of lists
+textDic = corpora.Dictionary(text_list)
+corpus = [textDic.doc2bow(doc) for doc in text_list]
 
-xTrain = vec.fit_transform(train)
-yYest = vec.transform(test)
+# Train the LDA model
+#lda = LdaModel(corpus=corpus, num_topics=10, id2word=textDic)
 
-model = lda.fit_transform(xTrain)
-names = list(vec.get_feature_names_out())
+lda = gensim.models.ldamodel.LdaModel(corpus=corpus,
+                                      num_topics=10,
+                                      random_state=100,
+                                      update_every=1,
+                                      chunksize=100,
+                                      passes=5,
+                                      alpha="auto")
 
-printTopics(lda, names, 10)
-print()
-
-
-
-
-
-# # Add topic distributions to the dataframe
-# topic_df = pd.DataFrame(model, columns=[f'Topic_{i}' for i in range(lda.n_components)])
-# newData = newData.reset_index(drop=True)
-# newData = pd.concat([newData, topic_df], axis=1)
-
-# # Extract top words for each topic
-# def get_top_words(model, feature_names, n_top_words):
-#     top_words = []
-#     for topic_idx, topic in enumerate(model.components_):
-#         top_words_for_topic = [feature_names[i] for i in topic.argsort()[:-n_top_words - 1:-1]]
-#         top_words.append(top_words_for_topic)
-#     return top_words
-
-# n_top_words = 400
-# feature_names = vec.get_feature_names_out()
-# top_words = get_top_words(lda, feature_names, n_top_words)
-
-# # Create a dataframe to store topics and their top words
-# topic_names = [f'Topic_{i}' for i in range(lda.n_components)]
-# top_words_df = pd.DataFrame(top_words, index=topic_names)
-# top_words_df.columns = [f'Word_{i}' for i in range(1, n_top_words + 1)]
-
-# # Save the dataframe to a CSV file
-# top_words_df.to_csv("lda_topics_top_words.csv", index=True)
-
-# print("Topics and top words saved to 'lda_topics_top_words.csv'")
+# Display the dominant topic for each document
+for idx, doc in enumerate(corpus):
+    topics = lda[doc]
+    dominant_topic = max(topics, key=lambda x: x[1])
+    print(f"Document {idx}: Topic {dominant_topic[0]} with probability {dominant_topic[1]:.4f}")

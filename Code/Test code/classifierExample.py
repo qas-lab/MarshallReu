@@ -24,7 +24,8 @@ def lemmatizeText(text):
 
 #removing time stamp
 def remove(text):
-    timestamp_pattern = r'\([A-Z0-9]+\)'
+    #timestamp_pattern = r'\([A-Za-z0-9]+\)'
+    timestamp_pattern = r'\S([A-Za-z]*\s*)\d{1,2}:\d{2}\s*[APap][Mm]'
     return re.sub(timestamp_pattern, '', text)
 
 
@@ -49,15 +50,12 @@ summary = df['Summary'].astype(str).apply(clean_text).apply(lemmatizeText)
 #text2 = df['Product'].astype(str).apply(clean_text).apply(lemmatizeText)
 trueLabel = df['Component'].astype(str) 
 
-#text = summary + '' + df['Product'].astype(str)
-
-with open('story.txt', 'r', encoding='utf-8') as file:
-    text = file.read()
+text = summary + '' + df['Product'].astype(str)
 
 # print(text) #Only for looking at the word strips
 
 compVec = ComplementNB()
-#clf = RandomForestClassifier()
+clf = RandomForestClassifier()
 #mlp = MLPClassifier()
 # logisticReg = LogisticRegression()
 
@@ -80,11 +78,11 @@ compPredict = compTrain.predict(test)
 compReport = classification_report(xTest, compPredict, zero_division=0)
 print(f'Complement Report: \n{compReport}')
 
-# #clf
-# clfTrain = clf.fit(train, xTrain)
-# clfPred = clf.predict(test)
-# clfReport = classification_report(xTest, clfPred)
-# print(f'CLF Report: \n{clfReport}\n')
+#clf
+clfTrain = clf.fit(train, xTrain)
+clfPred = clf.predict(test)
+clfReport = classification_report(xTest, clfPred)
+print(f'CLF Report: \n{clfReport}\n')
 
 # #mlp 
 # mlp.fit(train, xTrain)
@@ -101,5 +99,5 @@ print(f'Complement Report: \n{compReport}')
 # # Logistic Regression
 # logisticReg.fit(train, xTrain)
 # logisticPred = logisticReg.predict(test)
-# logisticReport = classification_report(xTest, logisticPred)
+# logisticReport = classification_report(xTest, logisticPred, zero_division=0)
 # print(f'Logistic Regression Baseline: \n{logisticReport} \n')
