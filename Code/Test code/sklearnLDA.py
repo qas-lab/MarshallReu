@@ -6,9 +6,13 @@ import string
 from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.feature_extraction.text import CountVectorizer,TfidfVectorizer
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import f1_score
 from nltk.corpus import stopwords
 from nltk.stem.wordnet import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
+import numpy as np
+import torch
+import torch.nn.functional as F
 
 #function for lemmztizing
 def wordLem(text):
@@ -37,6 +41,7 @@ def printTopics(model, featNames, topics):
 
     print()
 
+
 #variables to use within code
 stops = list(stopwords.words('english'))
 numTopics = 10
@@ -44,20 +49,20 @@ numTopics = 10
 #Creating instances of classes
 lem = WordNetLemmatizer()
 lda = LatentDirichletAllocation(n_components=numTopics, random_state=42, doc_topic_prior=0.6)
-#vec = TfidfVectorizer(stop_words=stops, max_df=0.90)
-vec = CountVectorizer(stop_words=stops, max_df=0.90, min_df=0.01)
+vec = TfidfVectorizer(stop_words=stops, max_df=0.95)
+#vec = CountVectorizer(stop_words=stops, max_df=0.95, min_df=0.01)
 
 #opening file and removing duplicate reports
 df = pd.read_csv('eclipse_jdt.csv')
 dupl = df.dropna(subset=['Duplicated_issue'])
 newData = df.drop(index=dupl.index)
-text = newData['Description'].astype(str).apply(cleanText).apply(wordLem) + ' ' + newData['Component'].astype(str)
+text = newData['Description'].astype(str).apply(cleanText).apply(wordLem)
 
 #splitting testing data
 train, test = train_test_split(text, shuffle=True, random_state=42, test_size=0.2)
 
 xTrain = vec.fit_transform(train)
-yYest = vec.transform(test)
+yTest = vec.transform(test)
 
 model = lda.fit_transform(xTrain)
 names = list(vec.get_feature_names_out())
@@ -86,4 +91,26 @@ top_words_df.columns = [f'Word_{i}' for i in range(1, n_top_words + 1)]
 # Save the dataframe to a CSV file
 top_words_df.to_csv("topics.csv", index=True)
 
-print("Topics and top words saved to 'topics.csv'")
+output = torch.rand(1, 10)
+target = torch.randint(10, (1,))
+loss = F.cross_entropy(output, target)
+perp = torch.exp(loss)
+print(f'\n Torch Perplexity: {perp}\n')
+
+pred = lda.perplexity(model)
+print(f'\n Skleans perplexity {pred}')
+
+# # Calculate Coherence Score using gensim
+# # Convert sklearn's LDA output to gensim format
+# corpus = [gensim.matutils.sparse2full(c, numTerms=len(names)) for c in xTrain]
+# text_list = [doc.split() for doc in train]
+
+# # Create a dictionary
+# dictionary = gensim.corpora.Dictionary(text_list)
+
+# # Generate coherence score
+# lda_gensim = gensim.models.ldamodel.LdaModel(id2word=dictionary, num_topics=numTopics, random_state=42)
+# lda_gensim.update(corpus)
+# coherence_model_lda = CoherenceModel(model=lda_gensim, texts=text_list, dictionary=dictionary, coherence='c_v')
+# coherence_lda = coherence_model_lda.get_coherence()
+# print(f'Coherence Score: {coherence_lda:.4f}')

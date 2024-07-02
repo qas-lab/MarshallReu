@@ -1,4 +1,5 @@
 #This file is for using the DistilBert classifier and topic modeling algorithm
+# SO far this text classifier is the best one to use
 
 import pandas as pd
 import torch
