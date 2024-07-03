@@ -14,43 +14,61 @@ from nltk.tokenize import word_tokenize             #tokenize words before apply
 from sklearn.ensemble import RandomForestClassifier # CLF classifier
 from sklearn.linear_model import LogisticRegression # Logistic Regression
 from sklearn.ensemble import StackingClassifier
+from nltk.stem import PorterStemmer
 
 
-#function for lemmatization
-def lemmatizeText(text):
-    tokens = word_tokenize(text)
-    lemmatized_tokens = [lemmatizer.lemmatize(token) for token in tokens]
-    return ' '.join(lemmatized_tokens)
+# Function to remove stop words
+def removeStopWords(text):
+    words = text.split()
+    filtered_words = [word for word in words if word not in stops]
+    return ' '.join(filtered_words)
 
-#removing time stamp
-def remove(text):
-    #timestamp_pattern = r'\([A-Za-z0-9]+\)'
-    timestamp_pattern = r'\S([A-Za-z]*\s*)\d{1,2}:\d{2}\s*[APap][Mm]'
-    return re.sub(timestamp_pattern, '', text)
+# Function to remove code snippets and URLs
+def remove_code_snippets(text):
+    text = re.sub(r'`[^`]*`', ' ', text)
+    text = re.sub(r'```[^```]*```', ' ', text)
+    return text
 
+def remove_urls(text):
+    text = re.sub(r'http\S+|www\S+|https\S+', ' ', text, flags=re.MULTILINE)
+    return text
 
-# Function for text cleaning
-def clean_text(text):
-    text = remove(text)                                               # Remove stamps
-    text = text.lower()                                               # Convert to lowercase
-    text = re.sub(r'\d+', '', text)                                   # Remove numbers                       
-    text = text.translate(str.maketrans('', '', string.punctuation))  # Remove punctuation
-    text = text.strip()                                               # Remove leading/trailing whitespace 
+# Function to replace punctuation with spaces
+def replace_punctuation_with_space(text):
+    translator = str.maketrans(string.punctuation, ' ' * len(string.punctuation))
+    return text.translate(translator)
+
+# Preprocessing function
+def preProcessing(text):
+
+    text = remove_code_snippets(text)                                                   # Remove code snippets
+    text = remove_urls(text)                                                            # Remove URLs
+    text = text.lower()                                                                 # Lowercase
+    text = re.sub(r'\d+', ' ', text)                                                    # Remove numbers
+    text = removeStopWords(text)                                                        # Remove stop words
+    text = replace_punctuation_with_space(text)                                         # Replace punctuation with spaces
+    text = re.sub(r'\b[a-z]\b', ' ', text)                                              # Remove single characters
+    text = re.sub(r'\s+', ' ', text).strip()                                            # Remove extra spaces
+    text = ' '.join([stem.stem(word) for word in text.split()])                         # Apply stemming
+
     return text
 
 stops = list(stopwords.words('english'))
 
 # Load your dataset
-df = pd.read_csv("dataset.csv")
+df = pd.read_csv("eclipse_jdt.csv")
 
 #lemmatization
 lemmatizer = WordNetLemmatizer()
+stem = PorterStemmer()
 
-summary = df['Summary'].astype(str).apply(clean_text).apply(lemmatizeText)
+summary = df['Title'].astype(str).apply(preProcessing)
 #text2 = df['Product'].astype(str).apply(clean_text).apply(lemmatizeText)
-trueLabel = df['Component'].astype(str) 
+trueLabel = df['Description'].astype(str).apply(preProcessing)
 
-text = summary + '' + df['Product'].astype(str)
+text = summary + '' + trueLabel
+
+
 
 # print(text) #Only for looking at the word strips
 

@@ -13,6 +13,7 @@ from nltk.tokenize import word_tokenize
 import numpy as np
 import torch
 import torch.nn.functional as F
+import pyLDAvis
 
 #function for lemmztizing
 def wordLem(text):
@@ -21,14 +22,6 @@ def wordLem(text):
     lemToken = [lem.lemmatize(tokens) for tokens in tokens]
 
     return ' '.join(lemToken)
-
-# Function for text cleaning
-def cleanText(text):
-    text = text.lower()                                                    # Convert to lowercase
-    text = re.sub(r'\d+', ' ', text)                                       # Remove numbers
-    text = re.sub(r'\b[nan]', ' ', text)                                   # Remove nan (Hard Coded)
-    #text = text.translate(str.maketrans(' ', ' ', string.punctuation))     # Remove punctuation
-    return text
 
 #function for printing topics
 def printTopics(model, featNames, topics):
@@ -41,6 +34,41 @@ def printTopics(model, featNames, topics):
 
     print()
 
+# Function to remove stop words
+def removeStopWords(text):
+    words = text.split()
+    filtered_words = [word for word in words if word not in stops]
+    return ' '.join(filtered_words)
+
+# Function to remove code snippets and URLs
+def remove_code_snippets(text):
+    text = re.sub(r'`[^`]*`', ' ', text)
+    text = re.sub(r'```[^```]*```', ' ', text)
+    return text
+
+def remove_urls(text):
+    text = re.sub(r'http\S+|www\S+|https\S+', ' ', text, flags=re.MULTILINE)
+    return text
+
+# Function to replace punctuation with spaces
+def replace_punctuation_with_space(text):
+    translator = str.maketrans(string.punctuation, ' ' * len(string.punctuation))
+    return text.translate(translator)
+
+# Preprocessing function
+def preProcessing(text):
+
+    text = remove_code_snippets(text)                                                   # Remove code snippets
+    text = remove_urls(text)                                                            # Remove URLs
+    text = text.lower()                                                                 # Lowercase
+    text = re.sub(r'\d+', ' ', text)                                                    # Remove numbers
+    text = removeStopWords(text)                                                        # Remove stop words
+    text = replace_punctuation_with_space(text)                                         # Replace punctuation with spaces
+    text = re.sub(r'\b[a-z]\b', ' ', text)                                              # Remove single characters
+    text = re.sub(r'\s+', ' ', text).strip()                                            # Remove extra spaces
+    #text = ' '.join([stem.stem(word) for word in text.split()])                         # Apply stemming
+
+    return text
 
 #variables to use within code
 stops = list(stopwords.words('english'))
@@ -48,15 +76,15 @@ numTopics = 10
 
 #Creating instances of classes
 lem = WordNetLemmatizer()
-lda = LatentDirichletAllocation(n_components=numTopics, random_state=42, doc_topic_prior=0.6)
-vec = TfidfVectorizer(stop_words=stops, max_df=0.95)
-#vec = CountVectorizer(stop_words=stops, max_df=0.95, min_df=0.01)
+lda = LatentDirichletAllocation(n_components=numTopics, random_state=42, doc_topic_prior=0.01, topic_word_prior=0.01)
+#vec = TfidfVectorizer(stop_words=stops, max_df=0.95)
+vec = CountVectorizer(stop_words=stops, max_df=0.95, min_df=0.01, ngram_range=(1,2))
 
 #opening file and removing duplicate reports
 df = pd.read_csv('eclipse_jdt.csv')
 dupl = df.dropna(subset=['Duplicated_issue'])
 newData = df.drop(index=dupl.index)
-text = newData['Description'].astype(str).apply(cleanText).apply(wordLem)
+text = newData['Description'].astype(str).apply(preProcessing).apply(wordLem)
 
 #splitting testing data
 train, test = train_test_split(text, shuffle=True, random_state=42, test_size=0.2)
@@ -97,8 +125,7 @@ loss = F.cross_entropy(output, target)
 perp = torch.exp(loss)
 print(f'\n Torch Perplexity: {perp}\n')
 
-pred = lda.perplexity(model)
-print(f'\n Skleans perplexity {pred}')
+
 
 # # Calculate Coherence Score using gensim
 # # Convert sklearn's LDA output to gensim format
