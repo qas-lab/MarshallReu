@@ -72,13 +72,13 @@ def preProcessing(text):
 
 #variables to use within code
 stops = list(stopwords.words('english'))
-numTopics = 10
+numTopics = 3
 
 #Creating instances of classes
 lem = WordNetLemmatizer()
-lda = LatentDirichletAllocation(n_components=numTopics, random_state=42, doc_topic_prior=0.01, topic_word_prior=0.01)
-#vec = TfidfVectorizer(stop_words=stops, max_df=0.95)
-vec = CountVectorizer(stop_words=stops, max_df=0.95, min_df=0.01, ngram_range=(1,2))
+lda = LatentDirichletAllocation(n_components=numTopics, random_state=42)
+#vec = TfidfVectorizer(stop_words=stops, max_df=0.95, ngram_range=(1,2))                                                          #min_df added to test how it works
+vec = CountVectorizer(stop_words=stops, max_df=0.95, ngram_range=(1,3), max_features=10000)
 
 #opening file and removing duplicate reports
 df = pd.read_csv('eclipse_jdt.csv')
@@ -107,7 +107,7 @@ def get_top_words(model, feature_names, n_top_words):
         top_words.append(top_words_for_topic)
     return top_words
 
-n_top_words = 400
+n_top_words = 1000
 feature_names = vec.get_feature_names_out()
 top_words = get_top_words(lda, feature_names, n_top_words)
 
@@ -141,3 +141,4 @@ print(f'\n Torch Perplexity: {perp}\n')
 # coherence_model_lda = CoherenceModel(model=lda_gensim, texts=text_list, dictionary=dictionary, coherence='c_v')
 # coherence_lda = coherence_model_lda.get_coherence()
 # print(f'Coherence Score: {coherence_lda:.4f}')
+

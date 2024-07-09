@@ -1,4 +1,3 @@
-# Testing gensim 
 
 import pandas as pd
 import re
@@ -10,29 +9,33 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 from gensim.models import CoherenceModel
-from gensim.corpora import Dictionary
-import time
+import pyLDAvis
 import pyLDAvis.gensim_models as gensimvis
+import time
 import torch
 import torch.nn.functional as F
-import pyLDAvis
 
 # Load stop words
 stop_words = set(stopwords.words('english'))
+
 
 # Initialize the lemmatizer
 lem = WordNetLemmatizer()
 
 # Function for text cleaning
 def cleanText(text):
-    text = split_camel_case(text)
+    text = split_camel_case(text)                                            # Space in Camel Case
+    text = re.sub(r'\.', ' ', text)                                          # Remove period and replace with space
     text = text.lower()                                                      # Convert to lowercase
+    text = remove_letters_before_date(text)                                  # Remove Initials
     text = re.sub(r'\d+', ' ', text)                                         # Remove numbers
-    text = removeStopWords(text)                                             # Removing stop words
-    text = re.sub(r'\b(nan)\b', ' ', text)                                   # Remove 'nan'
     text = text.translate(str.maketrans('', '', string.punctuation))         # Remove punctuation
     text = re.sub(r'\b[a-z]\b', ' ', text)                                   # removing single characters
     text = re.sub(r'\s+', ' ', text).strip()                                 # Remove extra whitespace
+    text = re.sub(r'\b[nan]\b', ' ', text)                                   # Removing nan
+    text = re.sub(r'\b[am]\b', ' ', text)
+    text = re.sub(r'\b[pm]\b', ' ', text)
+    text = removeStopWords(text)                                             # Removing stop words
     return text
 
 # Function for lemmatizing
@@ -54,6 +57,16 @@ def split_camel_case(text):
     words = re.sub(r'([A-Z]+)([A-Z][a-z])', r'\1 \2', words)
     return words
 
+def remove_letters_before_date(text):
+    # Define regex pattern for the date and time pattern
+    date_pattern = r'.*?\(\d{1,2}/\d{1,2}/\d{2,4} \d{1,2}:\d{2}:\d{2} (?:AM|PM)\)'
+    
+    # Use re.sub to remove the letters before the date pattern
+    result = re.sub(r'^[a-zA-Z\s]*', '', text, count=1)
+    
+    return result
+
+
 if __name__ == "__main__":
     # Measure the start time
     start_time = time.time()
@@ -61,8 +74,12 @@ if __name__ == "__main__":
     # Opening file and removing duplicate reports
     newData = pd.read_csv('eclipse_jdt.csv')
 
+    print(newData['Description'])
+
     # Clean and lemmatize text
-    text = newData['Description'].astype(str).apply(cleanText).apply(wordLem)
+    text = newData['Description'].astype(str).apply(cleanText).apply(wordLem) +  newData['Title'].astype(str).apply(cleanText).apply(wordLem)
+
+    print(text)
 
     # Create a dictionary and corpus for LDA
     text_list = text.tolist()  # Convert to list of lists
@@ -77,18 +94,44 @@ if __name__ == "__main__":
 
     topicNum = 10
 
-    lda = LdaModel(corpus=corpus, num_topics=topicNum, id2word=textDic, passes=20, chunksize=100, random_state=42)
+    from gensim.models.ldamodel import LdaModel
+
+    lda = LdaModel(corpus=corpus, 
+               num_topics=topicNum, 
+               id2word=textDic, 
+               passes=50, 
+               chunksize=2500, 
+               random_state=100,
+               alpha=0,
+               eta='auto',
+               decay=0.5,
+               offset=64,
+               gamma_threshold=0.01,
+               minimum_phi_value=0.001,
+               per_word_topics=True)
+      
 
     # Measure the total time
     end_time = time.time()
     print(f"Total time: {end_time - start_time:.2f} seconds")
 
-    # Example usage to print top words for each topic
-    num_topics = lda.num_topics
+    # Example usage to print top 10 words for each topic
+    num_preview_words = 10  # Number of words to print for each topic for preview
+    num_save_words = 1000  # Number of words to save for each topic
     top_words_per_topic = []
 
-    for idx, topic in lda.print_topics(num_topics=num_topics, num_words=10):
+    for idx, topic in lda.print_topics(num_topics=lda.num_topics, num_words=num_preview_words):
         print(f'Topic: {idx} \nWords: {topic}\n')
+
+    for idx in range(topicNum):
+        topic_terms = lda.get_topic_terms(idx, topn=num_save_words)
+        top_words = [textDic[word_id] for word_id, prob in topic_terms]
+        top_words_per_topic.append([f'Topic_{idx}', ', '.join(top_words)])
+
+    # Save the topics to a CSV file with two columns (Topic and Words)
+    topics_df = pd.DataFrame(top_words_per_topic, columns=['Topic', 'Words'])
+    topics_df.to_csv('lda_topics.csv', index=False)
+    print("LDA topics saved to lda_topics.csv")
 
     # Measure the time after training the LDA model
     lda_end_time = time.time()
@@ -116,4 +159,3 @@ if __name__ == "__main__":
     # Measure the time after calculating the coherence score
     coherence_end_time = time.time()
     print(f"Coherence calculation time: {coherence_end_time - lda_end_time:.2f} seconds")
-

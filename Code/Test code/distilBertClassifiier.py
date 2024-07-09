@@ -24,7 +24,7 @@ class Triage(Dataset):
     #.Description is chagned out with the text column that you are reading
     def __getitem__(self, index):
 
-        title = str(self.data.Component[index])
+        title = str(self.data.Component[index]) #Need to change this back when I switch back
         title = ' '.join(title.split())
         inputs = self.tokenizer.encode_plus(
             title,
@@ -41,7 +41,7 @@ class Triage(Dataset):
         return {
             'ids': torch.tensor(ids, dtype=torch.long),
             'mask': torch.tensor(mask, dtype=torch.long),
-            'targets': torch.tensor(self.data.Component[index], dtype=torch.long)
+            'targets': torch.tensor(self.data.ENCODE_CAT[index], dtype=torch.long) #this was changed
         }
     
     def __len__(self):
@@ -186,10 +186,24 @@ myDict = {
 encodeDict = {}
 
 df['Component'] = df['Component'].apply(lambda x: updateCat(x))
-df['Component'] = df['Component'].apply(lambda x: encodeCat(x))
+df['ENCODE_CAT'] = df['Component'].apply(lambda x: encodeCat(x))
 
-# df['Description'] = df['Description'].apply(lambda x: updateCat(x))
-# df['Description'] = df['Description'].apply(lambda x: encodeCat(x))
+# # Import the csv into pandas dataframe and add the headers
+# df = pd.read_csv('newsCorpora.csv', sep='\t', names=['ID','TITLE', 'URL', 'PUBLISHER', 'CATEGORY', 'STORY', 'HOSTNAME', 'TIMESTAMP'])
+# df = df[['TITLE','CATEGORY']]
+# myDict = {
+#     'e':'Entertainment',
+#     'b':'Business',
+#     't':'Science',
+#     'm':'Health'
+# }
+
+# encodeDict = {}
+
+# df['CATEGORY'] = df['CATEGORY'].apply(lambda x: updateCat(x))
+# df['ENCODE_CAT'] = df['CATEGORY'].apply(lambda x: encodeCat(x))
+
+#End of sample
 
 train_size = 0.8
 train_dataset = df.sample(frac=train_size, random_state=200)
