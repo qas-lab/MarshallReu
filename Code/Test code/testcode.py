@@ -18,7 +18,6 @@ import torch.nn.functional as F
 # Load stop words
 stop_words = set(stopwords.words('english'))
 
-
 # Initialize the lemmatizer
 lem = WordNetLemmatizer()
 
@@ -33,8 +32,7 @@ def cleanText(text):
     text = re.sub(r'\b[a-z]\b', ' ', text)                                   # removing single characters
     text = re.sub(r'\s+', ' ', text).strip()                                 # Remove extra whitespace
     text = re.sub(r'\b[nan]\b', ' ', text)                                   # Removing nan
-    text = re.sub(r'\b[am]\b', ' ', text)
-    text = re.sub(r'\b[pm]\b', ' ', text)
+    text = re.sub(r'\b(?:am|pm)\b', ' ', text)
     text = removeStopWords(text)                                             # Removing stop words
     return text
 
@@ -74,12 +72,12 @@ if __name__ == "__main__":
     # Opening file and removing duplicate reports
     newData = pd.read_csv('eclipse_jdt.csv')
 
-    print(newData['Description'])
+    #print(newData['Description'])
 
     # Clean and lemmatize text
     text = newData['Description'].astype(str).apply(cleanText).apply(wordLem) +  newData['Title'].astype(str).apply(cleanText).apply(wordLem)
 
-    print(text)
+    #print(text)
 
     # Create a dictionary and corpus for LDA
     text_list = text.tolist()  # Convert to list of lists
@@ -94,23 +92,15 @@ if __name__ == "__main__":
 
     topicNum = 10
 
-    from gensim.models.ldamodel import LdaModel
-
     lda = LdaModel(corpus=corpus, 
                num_topics=topicNum, 
                id2word=textDic, 
-               passes=50, 
+               passes=10, 
                chunksize=2500, 
-               random_state=100,
-               alpha=0,
-               eta='auto',
-               decay=0.5,
-               offset=64,
-               gamma_threshold=0.01,
-               minimum_phi_value=0.001,
+               random_state=42,
+               alpha='auto',
                per_word_topics=True)
       
-
     # Measure the total time
     end_time = time.time()
     print(f"Total time: {end_time - start_time:.2f} seconds")

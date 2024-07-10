@@ -18,5 +18,15 @@ lda = gensim.models.LdaModel(corpus, num_topics=numTopics, id2word=textDic, pass
 topics = [lda[doc] for doc in corpus]
 
 X = [[topic[1] for topic in doc] for doc in topics]
+y = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]  # Not enough labels 
 
-print(X)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+
+svm = SVC(kernel='linear')
+svm.fit(X_train, y_train)
+
+y_pred = svm.predict(X_test)
+print(classification_report(y_test, y_pred))
+
+print(f'Top 1 Accuracy: {top_k_accuracy_score(y_test, y_pred, k=1)}')
+print(f'Top 5 Accuracy: {top_k_accuracy_score(y_test, y_pred, k=5)}')

@@ -40,12 +40,6 @@ def removeStopWords(text):
     filtered_words = [word for word in words if word not in stops]
     return ' '.join(filtered_words)
 
-# Function to remove code snippets and URLs
-def remove_code_snippets(text):
-    text = re.sub(r'`[^`]*`', ' ', text)
-    text = re.sub(r'```[^```]*```', ' ', text)
-    return text
-
 def remove_urls(text):
     text = re.sub(r'http\S+|www\S+|https\S+', ' ', text, flags=re.MULTILINE)
     return text
@@ -55,30 +49,51 @@ def replace_punctuation_with_space(text):
     translator = str.maketrans(string.punctuation, ' ' * len(string.punctuation))
     return text.translate(translator)
 
+def split_camel_case(text):
+    # Use regex to insert a space before each capital letter not preceded by another capital letter
+    words = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
+    # Insert a space before a sequence of capital letters followed by a lowercase letter
+    words = re.sub(r'([A-Z]+)([A-Z][a-z])', r'\1 \2', words)
+    return words
+
+def remove_letters_before_date(text):
+    # Define regex pattern for the date and time pattern
+    date_pattern = r'.*?\(\d{1,2}/\d{1,2}/\d{2,4} \d{1,2}:\d{2}:\d{2} (?:AM|PM)\)'
+    
+    # Use re.sub to remove the letters before the date pattern
+    result = re.sub(r'^[a-zA-Z\s]*', '', text, count=1)
+    
+    return result
+
 # Preprocessing function
 def preProcessing(text):
 
-    text = remove_code_snippets(text)                                                   # Remove code snippets
+    text = split_camel_case(text)
+    text = remove_letters_before_date(text)
+    text = re.sub(r'\.', ' ', text)                                          # Remove period and replace with space
     text = remove_urls(text)                                                            # Remove URLs
     text = text.lower()                                                                 # Lowercase
     text = re.sub(r'\d+', ' ', text)                                                    # Remove numbers
     text = removeStopWords(text)                                                        # Remove stop words
     text = replace_punctuation_with_space(text)                                         # Replace punctuation with spaces
     text = re.sub(r'\b[a-z]\b', ' ', text)                                              # Remove single characters
-    text = re.sub(r'\s+', ' ', text).strip()                                            # Remove extra spaces
+    text = re.sub(r'\b[nan]\b', ' ', text)                                   # Removing nan
+    text = re.sub(r'\b[am]\b', ' ', text)
+    text = re.sub(r'\b[pm]\b', ' ', text)
+    #text = re.sub(r'\s+', ' ', text).strip()                                            # Remove extra spaces
     #text = ' '.join([stem.stem(word) for word in text.split()])                         # Apply stemming
 
     return text
 
 #variables to use within code
 stops = list(stopwords.words('english'))
-numTopics = 3
+numTopics = 10
 
 #Creating instances of classes
 lem = WordNetLemmatizer()
-lda = LatentDirichletAllocation(n_components=numTopics, random_state=42)
+lda = LatentDirichletAllocation(n_components=numTopics, random_state=42, doc_topic_prior=0.6, topic_word_prior=0.6)
 #vec = TfidfVectorizer(stop_words=stops, max_df=0.95, ngram_range=(1,2))                                                          #min_df added to test how it works
-vec = CountVectorizer(stop_words=stops, max_df=0.95, ngram_range=(1,3), max_features=10000)
+vec = CountVectorizer(stop_words=stops, max_df=0.90, min_df=0.1)
 
 #opening file and removing duplicate reports
 df = pd.read_csv('eclipse_jdt.csv')

@@ -20,30 +20,27 @@ from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
 
-# # Load data
-# current_df = pd.read_csv('lda_topics.csv', header=0)
+# Load data
+current_df = pd.read_csv('lda_topics.csv', header=0)
 
-# # Drop any rows with missing values
-# current_df.dropna(inplace=True)
+# Drop any rows with missing values
+current_df.dropna(inplace=True)
 
-# restructured_data = []
+restructured_data = []
 
-# # Iterate over each row in the current DataFrame
-# for index, row in current_df.iterrows():
-#     topic = row['Topic']
-#     words = row['Words'].split(', ')  # Split words by comma and space
-#     for word in words:
-#         restructured_data.append((topic, word))
+# Iterate over each row in the current DataFrame
+for index, row in current_df.iterrows():
+    topic = row['Topic']
+    words = row['Words'].split(', ')  # Split words by comma and space
+    for word in words:
+        restructured_data.append((topic, word))
 
-# # Create a new DataFrame from the restructured data
-# new_df = pd.DataFrame(restructured_data, columns=['Topic', 'Word'])
-
-new_df = pd.read_csv('topics_words.csv')
-new_df.drop(1)
+# Create a new DataFrame from the restructured data
+new_df = pd.DataFrame(restructured_data, columns=['Topic', 'Word'])
 
 # Define labels and text
 labels = new_df['Topic']
-text = new_df['Words']
+text = new_df['Word']
 
 # Split the data into training and test sets
 xTrain, xTest, yTrain, yTest = train_test_split(text, labels, test_size=0.2, random_state=42, shuffle=True)
