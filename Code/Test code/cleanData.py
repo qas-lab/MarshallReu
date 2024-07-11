@@ -57,17 +57,27 @@ def remove_letters_before_date(text):
     
     return result
 
-def remove_less_freq_words(text):
-    return
+# Need to add this later
+# def remove_less_freq_words(text):
+#     return
 
-data = pd.read_csv('eclipse_jdt.csv')
-
-print(data)
+#data = pd.read_csv('eclipse_jdt.csv')
+data = pd.read_csv('mozilla_firefox.csv')
 
 dupl = data.dropna(subset=['Duplicated_issue'])
 newText = data.drop(index=dupl.index)
 
 newData = newText[newText['Resolution'] == 'FIXED']
-text = newData['Description'].astype(str).apply(cleanText).apply(wordLem) +  newData['Title'].astype(str).apply(cleanText).apply(wordLem)
 
-print(text)
+text = newData['Description'].astype(str).apply(cleanText).apply(wordLem) +  newData['Title'].astype(str).apply(cleanText).apply(wordLem)
+# compNum = data['Component'].nunique()
+# compNum = compNum - 16 # Combining Deverlopers together
+
+# data = pd.read_csv('dataset.csv')
+# newData = data[data['Resolution'] == 'FIXED']
+
+# text = newData['Summary'].astype(str).apply(cleanText).apply(wordLem) 
+
+# print(f'The size of the data set is {len(data)} \n {data}')
+# print(f'The size of the text set is {len(text)} \n {text}')
+# print(f'The number of unique Component is {compNum}\n')

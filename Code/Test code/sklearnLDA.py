@@ -1,27 +1,16 @@
 # This is the Baseline LDA model, that I will use for my prototype, This file is only for the LDA 
 
-import pandas as pd
-import re
-import string
 from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.feature_extraction.text import CountVectorizer,TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score
-from nltk.corpus import stopwords
 from nltk.stem.wordnet import WordNetLemmatizer
-from nltk.tokenize import word_tokenize
 import numpy as np
 import torch
 import torch.nn.functional as F
 import pyLDAvis
-
-#function for lemmztizing
-def wordLem(text):
-
-    tokens = word_tokenize(text)
-    lemToken = [lem.lemmatize(tokens) for tokens in tokens]
-
-    return ' '.join(lemToken)
+from cleanData import text
+from sklearn.datasets import fetch_20newsgroups
 
 #function for printing topics
 def printTopics(model, featNames, topics):
@@ -34,72 +23,18 @@ def printTopics(model, featNames, topics):
 
     print()
 
-# Function to remove stop words
-def removeStopWords(text):
-    words = text.split()
-    filtered_words = [word for word in words if word not in stops]
-    return ' '.join(filtered_words)
-
-def remove_urls(text):
-    text = re.sub(r'http\S+|www\S+|https\S+', ' ', text, flags=re.MULTILINE)
-    return text
-
-# Function to replace punctuation with spaces
-def replace_punctuation_with_space(text):
-    translator = str.maketrans(string.punctuation, ' ' * len(string.punctuation))
-    return text.translate(translator)
-
-def split_camel_case(text):
-    # Use regex to insert a space before each capital letter not preceded by another capital letter
-    words = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
-    # Insert a space before a sequence of capital letters followed by a lowercase letter
-    words = re.sub(r'([A-Z]+)([A-Z][a-z])', r'\1 \2', words)
-    return words
-
-def remove_letters_before_date(text):
-    # Define regex pattern for the date and time pattern
-    date_pattern = r'.*?\(\d{1,2}/\d{1,2}/\d{2,4} \d{1,2}:\d{2}:\d{2} (?:AM|PM)\)'
-    
-    # Use re.sub to remove the letters before the date pattern
-    result = re.sub(r'^[a-zA-Z\s]*', '', text, count=1)
-    
-    return result
-
-# Preprocessing function
-def preProcessing(text):
-
-    text = split_camel_case(text)
-    text = remove_letters_before_date(text)
-    text = re.sub(r'\.', ' ', text)                                          # Remove period and replace with space
-    text = remove_urls(text)                                                            # Remove URLs
-    text = text.lower()                                                                 # Lowercase
-    text = re.sub(r'\d+', ' ', text)                                                    # Remove numbers
-    text = removeStopWords(text)                                                        # Remove stop words
-    text = replace_punctuation_with_space(text)                                         # Replace punctuation with spaces
-    text = re.sub(r'\b[a-z]\b', ' ', text)                                              # Remove single characters
-    text = re.sub(r'\b[nan]\b', ' ', text)                                   # Removing nan
-    text = re.sub(r'\b[am]\b', ' ', text)
-    text = re.sub(r'\b[pm]\b', ' ', text)
-    #text = re.sub(r'\s+', ' ', text).strip()                                            # Remove extra spaces
-    #text = ' '.join([stem.stem(word) for word in text.split()])                         # Apply stemming
-
-    return text
-
-#variables to use within code
-stops = list(stopwords.words('english'))
 numTopics = 10
 
 #Creating instances of classes
-lem = WordNetLemmatizer()
-lda = LatentDirichletAllocation(n_components=numTopics, random_state=42, doc_topic_prior=0.6, topic_word_prior=0.6)
-#vec = TfidfVectorizer(stop_words=stops, max_df=0.95, ngram_range=(1,2))                                                          #min_df added to test how it works
-vec = CountVectorizer(stop_words=stops, max_df=0.90, min_df=0.1)
+lda = LatentDirichletAllocation(n_components=numTopics, random_state=100)
+vec = TfidfVectorizer()                                                          #min_df added to test how it works
+#vec = CountVectorizer(max_df=0.90, min_df=0.1)
 
-#opening file and removing duplicate reports
-df = pd.read_csv('eclipse_jdt.csv')
-dupl = df.dropna(subset=['Duplicated_issue'])
-newData = df.drop(index=dupl.index)
-text = newData['Description'].astype(str).apply(preProcessing).apply(wordLem)
+#Doing this to ensure I am intializing data
+text = text.astype(str)
+
+# docs = fetch_20newsgroups(subset='all',  remove=('headers', 'footers', 'quotes'))['data']
+# text = docs
 
 #splitting testing data
 train, test = train_test_split(text, shuffle=True, random_state=42, test_size=0.2)
@@ -114,31 +49,32 @@ names = list(vec.get_feature_names_out())
 printTopics(lda, names, 10)
 print()
 
-# Extract top words for each topic
-def get_top_words(model, feature_names, n_top_words):
-    top_words = []
-    for topic_idx, topic in enumerate(model.components_):
-        top_words_for_topic = [feature_names[i] for i in topic.argsort()[:-n_top_words - 1:-1]]
-        top_words.append(top_words_for_topic)
-    return top_words
+# # Extract top words for each topic
+# def get_top_words(model, feature_names, n_top_words):
+#     top_words = []
+#     for topic_idx, topic in enumerate(model.components_):
+#         top_words_for_topic = [feature_names[i] for i in topic.argsort()[:-n_top_words - 1:-1]]
+#         top_words.append(top_words_for_topic)
+#     return top_words
 
-n_top_words = 1000
-feature_names = vec.get_feature_names_out()
-top_words = get_top_words(lda, feature_names, n_top_words)
+# n_top_words = 100
+# feature_names = vec.get_feature_names_out()
+# top_words = get_top_words(lda, feature_names, n_top_words)
 
-# Create a dataframe to store topics and their top words
-topic_names = [f'Topic_{i}' for i in range(lda.n_components)]
-top_words_df = pd.DataFrame(top_words, index=topic_names)
-top_words_df.columns = [f'Word_{i}' for i in range(1, n_top_words + 1)]
+# # Create a dataframe to store topics and their top words
+# topic_names = [f'Topic_{i}' for i in range(lda.n_components)]
+# top_words_df = pd.DataFrame(top_words, index=topic_names)
+# top_words_df.columns = [f'Word_{i}' for i in range(1, n_top_words + 1)]
 
-# Save the dataframe to a CSV file
-top_words_df.to_csv("topics.csv", index=True)
+# # Save the dataframe to a CSV file
+# top_words_df.to_csv("topics.csv", index=True)
 
 output = torch.rand(1, 10)
 target = torch.randint(10, (1,))
 loss = F.cross_entropy(output, target)
 perp = torch.exp(loss)
 print(f'\n Torch Perplexity: {perp}\n')
+
 
 
 
