@@ -32,7 +32,6 @@ vec = TfidfVectorizer()                                                         
 
 #Doing this to ensure I am intializing data
 text = text.astype(str)
-
 # docs = fetch_20newsgroups(subset='all',  remove=('headers', 'footers', 'quotes'))['data']
 # text = docs
 

@@ -10,24 +10,7 @@ from nltk.tokenize import word_tokenize
 
 # Load stop words
 stop_words = set(stopwords.words('english'))
-
-# Initialize the lemmatizer
 lem = WordNetLemmatizer()
-
-# Function for text cleaning
-def cleanText(text):
-    text = split_camel_case(text)                                            # Space in Camel Case
-    text = re.sub(r'\.', ' ', text)                                          # Remove period and replace with space
-    text = text.lower()                                                      # Convert to lowercase
-    text = remove_letters_before_date(text)                                  # Remove Initials
-    text = re.sub(r'\d+', ' ', text)                                         # Remove numbers
-    text = text.translate(str.maketrans('', '', string.punctuation))         # Remove punctuation
-    text = re.sub(r'\b[a-z]\b', ' ', text)                                   # removing single characters
-    text = re.sub(r'\s+', ' ', text).strip()                                 # Remove extra whitespace
-    text = re.sub(r'\b[nan]\b', ' ', text)                                   # Removing nan
-    text = re.sub(r'\b(?:am|pm)\b', ' ', text)
-    text = removeStopWords(text)                                             # Removing stop words
-    return text
 
 # Function for lemmatizing
 def wordLem(text):
@@ -57,27 +40,56 @@ def remove_letters_before_date(text):
     
     return result
 
-# Need to add this later
-# def remove_less_freq_words(text):
-#     return
+def remove_urls(text):
+    url_pattern = r'https?://(?:www\.)?\S+|www\.\S+'
+    return re.sub(url_pattern, '', text)
 
-#data = pd.read_csv('eclipse_jdt.csv')
-data = pd.read_csv('mozilla_firefox.csv')
+# Function for text cleaning
+def cleanText(text):
+    text = split_camel_case(text)                                            # Space in Camel Case
+    text = remove_urls(text)                                                 # Remove web addresses
+    text = re.sub(r'\.', ' ', text)                                          # Remove period and replace with space
+    text = text.lower()                                                      # Convert to lowercase
+    text = remove_letters_before_date(text)                                  # Remove Initials
+    text = re.sub(r'\d+', ' ', text)                                         # Remove numbers
+    text = text.translate(str.maketrans('', '', string.punctuation))         # Remove punctuation
+    text = re.sub(r'\b[a-z]\b', ' ', text)                                   # removing single characters
+    text = re.sub(r'\s+', ' ', text).strip()                                 # Remove extra whitespace
+    #text = re.sub(r'\b[nan]\b', ' ', text)                                   # Removing nan
+    text = re.sub(r'\b(?:am|pm)\b', ' ', text)                               # Removing am and pm
+    text = removeStopWords(text)                                             # Removing stop words
+                                  
+    return text
+
+def cleanDevText(text):
+    pattern = r'(.+?)@.*'
+    return re.sub(pattern, r'\1', text)
+
+data = pd.read_csv('eclipse_jdt.csv')
+# data = pd.read_csv('mozilla_firefox.csv')
 
 dupl = data.dropna(subset=['Duplicated_issue'])
 newText = data.drop(index=dupl.index)
-
 newData = newText[newText['Resolution'] == 'FIXED']
-
 text = newData['Description'].astype(str).apply(cleanText).apply(wordLem) +  newData['Title'].astype(str).apply(cleanText).apply(wordLem)
+
+# print(f'Text data \n {text}')  # Debugging 
+
 # compNum = data['Component'].nunique()
-# compNum = compNum - 16 # Combining Deverlopers together
 
-# data = pd.read_csv('dataset.csv')
-# newData = data[data['Resolution'] == 'FIXED']
+# data = pd.read_csv('classifier_data_0.csv')
 
-# text = newData['Summary'].astype(str).apply(cleanText).apply(wordLem) 
+# text = data['description'].astype(str).apply(cleanText).apply(wordLem) + data['issue_title'].astype(str).apply(cleanText).apply(wordLem)
+
+# devs = data['owner'].astype(str).apply(cleanDevText)
+# devs = devs.value_counts()
+# devs = devs[devs > 20]
+
+#compNum = devs.nunique() 
 
 # print(f'The size of the data set is {len(data)} \n {data}')
 # print(f'The size of the text set is {len(text)} \n {text}')
-# print(f'The number of unique Component is {compNum}\n')
+# #print(f'The number of unique Component is {compNum}\n')
+
+# print(f'The developer names is \n{devs}')
+# #print(f'The total number of devs : {compNum}')
