@@ -55,7 +55,7 @@ def cleanText(text):
     text = text.translate(str.maketrans('', '', string.punctuation))         # Remove punctuation
     text = re.sub(r'\b[a-z]\b', ' ', text)                                   # removing single characters
     text = re.sub(r'\s+', ' ', text).strip()                                 # Remove extra whitespace
-    #text = re.sub(r'\b[nan]\b', ' ', text)                                   # Removing nan
+    #text = re.sub(r'\b[nan]\b', ' ', text)                                  # Removing nan
     text = re.sub(r'\b(?:am|pm)\b', ' ', text)                               # Removing am and pm
     text = removeStopWords(text)                                             # Removing stop words
                                   
@@ -72,6 +72,8 @@ dupl = data.dropna(subset=['Duplicated_issue'])
 newText = data.drop(index=dupl.index)
 newData = newText[newText['Resolution'] == 'FIXED']
 text = newData['Description'].astype(str).apply(cleanText).apply(wordLem) +  newData['Title'].astype(str).apply(cleanText).apply(wordLem)
+
+print(text)
 
 # print(f'Text data \n {text}')  # Debugging 
 
@@ -93,3 +95,5 @@ text = newData['Description'].astype(str).apply(cleanText).apply(wordLem) +  new
 
 # print(f'The developer names is \n{devs}')
 # #print(f'The total number of devs : {compNum}')
+
+comp = data['Component']

@@ -11,8 +11,8 @@ from gensim import corpora
 
 # Parameters
 minWords = 10
-numTopics = 10
-passes = 10
+numTopics = 20
+passes = 200
 
 # Ensure text_list is tokenized and cleaned
 text_list = text
@@ -80,7 +80,7 @@ criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 # Training loop
-num_epochs = 3
+num_epochs = 500
 for epoch in range(num_epochs):
     model.train()
     for batch_X, batch_y in train_loader:
