@@ -5,28 +5,54 @@ Class for creating a developer and placing the devloper into a list
 '''
 class Developers:
 
-    def __init__(self, name, bugAmount, bugType, bugList):
+    def __init__(self, name, amount, type):
 
         self.name = name
-        self.amount = bugAmount
-        self.type = bugType
-        self.list = bugList
+        self.amount = amount
+        self.type = type
+        self.bugList = dict()
 
-    # Need to continue to add
-    def addToList(report, amount):
+    def addToDict(self, amount, type):
 
-        # Read the report
-        # Determine the topic for the report
-        # Add report to developers list
+        if type not in self.bugList.keys():
 
-        return
+            self.bugList[type] = amount
+        
+        return 
+    
+    def getName(self):
+        return self.name
+    
+    def getType(self):
+        return self.type
+    
+    def getAmount(self):
+        return self.amount
+    
+    def topBugCategory(self):
+
+        
+
+        return 
     
 '''
-This function will search for the top developer that can fix a bug report 
-'''    
-def find_top_n_devs(devDict, report, n):
+Triage class for developers
+'''
+class Triagers:
 
+    def __init__(self, devs):
+
+        self.devs = devs
+        self.list = dict()
     
+    def addToList(list, type, devs):
 
-    return
+        list[type] = devs
+        
+        return list
 
+testDev1 = Developers(name='Mike', amount=250, type='Debug')
+testDev1.addToDict(250, 'Debug')
+testDev1.addToDict(20, 'Core')
+
+print(testDev1.bugList)
