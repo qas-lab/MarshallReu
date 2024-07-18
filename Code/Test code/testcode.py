@@ -1,93 +1,94 @@
-
-import pandas as pd
-import re
-import string
 import gensim
 from gensim import corpora
-from gensim.models import LdaModel
+from gensim.models import LdaMulticore
+from gensim.utils import simple_preprocess
 from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
-from nltk.tokenize import word_tokenize
-from gensim.models import CoherenceModel
-import pyLDAvis
-import pyLDAvis.gensim_models as gensimvis
-import time
-import torch
-import torch.nn.functional as F
-from cleanData import text
+from nltk.stem import PorterStemmer
+import numpy as np
+from sklearn.feature_extraction.text import CountVectorizer
 
-if __name__ == "__main__":
-    # Measure the start time
-    start_time = time.time()
+class ExtendedLDAModel:
+    def __init__(self, num_topics=10):
+        self.num_topics = num_topics
+        self.lda_model = None
+        self.dictionary = None
+        self.feature_vectorizer = CountVectorizer()
+        self.ps = PorterStemmer()
+        self.stop_words = set(stopwords.words('english'))
 
-    # Create a dictionary and corpus for LDA
-    text_list = text.tolist()  # Convert to list of lists
-    textDic = corpora.Dictionary(text_list)
-    corpus = [textDic.doc2bow(doc) for doc in text_list]
+    def preprocess_text(self, text):
+        tokens = simple_preprocess(text)
+        return [self.ps.stem(word) for word in tokens if word not in self.stop_words]
 
-    # Measure the time after preprocessing
-    preprocessing_time = time.time()
+    def create_corpus(self, documents):
+        preprocessed_docs = [self.preprocess_text(doc) for doc in documents]
+        self.dictionary = corpora.Dictionary(preprocessed_docs)
+        return [self.dictionary.doc2bow(doc) for doc in preprocessed_docs]
 
-    # Train the LDA model
-    lda_start_time = time.time()
+    def fit(self, bug_reports):
+        # Extract text and features
+        texts = [report['description'] + ' ' + report['summary'] for report in bug_reports]
+        features = [[report['product'], report['component']] for report in bug_reports]
 
-    topicNum = 10
+        # Create corpus and train LDA model
+        corpus = self.create_corpus(texts)
+        self.lda_model = LdaMulticore(corpus=corpus, id2word=self.dictionary, num_topics=self.num_topics)
 
-    lda = LdaModel(corpus=corpus, 
-               num_topics=topicNum, 
-               id2word=textDic, 
-               passes=10, 
-               chunksize=2500, 
-               random_state=42,
-               alpha='auto',
-               per_word_topics=True,
-               iterations=10)
-      
-    # Measure the total time
-    end_time = time.time()
-    print(f"Total time: {end_time - start_time:.2f} seconds")
+        # Fit feature vectorizer
+        self.feature_vectorizer.fit([' '.join(feature) for feature in features])
 
-    # # Example usage to print top 10 words for each topic
-    # num_preview_words = 10  # Number of words to print for each topic for preview
-    # num_save_words = 1000  # Number of words to save for each topic
-    # top_words_per_topic = []
+    def transform(self, bug_report):
+        # Process text
+        text = bug_report['description'] + ' ' + bug_report['summary']
+        bow = self.dictionary.doc2bow(self.preprocess_text(text))
+        topic_dist = self.lda_model.get_document_topics(bow)
 
-    # for idx, topic in lda.print_topics(num_topics=lda.num_topics, num_words=num_preview_words):
-    #     print(f'Topic: {idx} \nWords: {topic}\n')
+        # Process features
+        features = [bug_report['product'], bug_report['component']]
+        feature_vec = self.feature_vectorizer.transform([' '.join(features)]).toarray()[0]
 
-    # for idx in range(topicNum):
-    #     topic_terms = lda.get_topic_terms(idx, topn=num_save_words)
-    #     top_words = [textDic[word_id] for word_id, prob in topic_terms]
-    #     top_words_per_topic.append([f'Topic_{idx}', ', '.join(top_words)])
+        # Combine topic distribution and feature vector
+        topic_dist_dense = np.zeros(self.num_topics)
+        for topic, prob in topic_dist:
+            topic_dist_dense[topic] = prob
 
-    # # Save the topics to a CSV file with two columns (Topic and Words)
-    # topics_df = pd.DataFrame(top_words_per_topic, columns=['Topic', 'Words'])
-    # topics_df.to_csv('lda_topics.csv', index=False)
-    # print("LDA topics saved to lda_topics.csv")
+        return np.concatenate([topic_dist_dense, feature_vec])
 
-    # Measure the time after training the LDA model
-    lda_end_time = time.time()
-    print(f"LDA training time: {lda_end_time - lda_start_time:.2f} seconds")
+class TopicMiner:
+    def __init__(self, extended_lda_model):
+        self.model = extended_lda_model
+        self.developer_profiles = {}
 
-    # Perplexity
-    output = torch.rand(1, topicNum)
-    target = torch.randint(topicNum, (1,))
-    loss = F.cross_entropy(output, target)
-    perp = torch.exp(loss)
-    print(f'\n Torch Perplexity: {perp}\n')
+    def update(self, bug_report, fixer):
+        vector = self.model.transform(bug_report)
+        if fixer not in self.developer_profiles:
+            self.developer_profiles[fixer] = vector
+        else:
+            self.developer_profiles[fixer] = (self.developer_profiles[fixer] + vector) / 2
 
-    # PyLDAvis visualization
-    vis = gensimvis.prepare(lda, corpus, textDic)
+    def recommend(self, bug_report, top_k=5):
+        vector = self.model.transform(bug_report)
+        similarities = {dev: np.dot(vector, profile) for dev, profile in self.developer_profiles.items()}
+        return sorted(similarities.items(), key=lambda x: x[1], reverse=True)[:top_k]
 
-    # Save the visualization to an HTML file
-    pyLDAvis.save_html(vis, 'lda_visualization.html')
-    print("LDA visualization saved to lda_visualization.html")
+if __name__ == '__main__':
+    # Usage example
+    bug_reports = [
+        {'description': 'App crashes on startup', 'summary': 'Startup crash', 'product': 'MobileApp', 'component': 'Startup'},
+        {'description': 'Button color is wrong', 'summary': 'UI color issue', 'product': 'WebApp', 'component': 'UI'},
+        # ... more bug reports ...
+    ]
 
-    # Calculate coherence score
-    coherence_model_lda = CoherenceModel(model=lda, texts=text_list, dictionary=textDic, coherence='c_v')
-    coherence_score = coherence_model_lda.get_coherence()
-    print(f'\nCoherence Score: {coherence_score}\n')
+    model = ExtendedLDAModel(num_topics=20)
+    model.fit(bug_reports)
 
-    # Measure the time after calculating the coherence score
-    coherence_end_time = time.time()
-    print(f"Coherence calculation time: {coherence_end_time - lda_end_time:.2f} seconds")
+    topic_miner = TopicMiner(model)
+
+    # Update the model with some assigned bug reports
+    topic_miner.update(bug_reports[0], 'developer1')
+    topic_miner.update(bug_reports[1], 'developer2')
+
+    # Recommend developers for a new bug report
+    new_bug = {'description': 'App freezes when loading large file', 'summary': 'Performance issue', 'product': 'MobileApp', 'component': 'FileHandling'}
+    recommendations = topic_miner.recommend(new_bug)
+    print(recommendations)

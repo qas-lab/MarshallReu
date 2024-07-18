@@ -68,20 +68,21 @@ def cleanDevText(text):
 data = pd.read_csv('eclipse_jdt.csv')
 # data = pd.read_csv('mozilla_firefox.csv')
 
+
 dupl = data.dropna(subset=['Duplicated_issue'])
 newText = data.drop(index=dupl.index)
 newData = newText[newText['Resolution'] == 'FIXED']
 text = newData['Description'].astype(str).apply(cleanText).apply(wordLem) +  newData['Title'].astype(str).apply(cleanText).apply(wordLem)
 
-print(text)
+# print(text)
 
 # print(f'Text data \n {text}')  # Debugging 
 
 # compNum = data['Component'].nunique()
 
-# data = pd.read_csv('classifier_data_0.csv')
+data = pd.read_csv('classifier_data_0.csv')
 
-# text = data['description'].astype(str).apply(cleanText).apply(wordLem) + data['issue_title'].astype(str).apply(cleanText).apply(wordLem)
+text = data['description'].astype(str).apply(cleanText).apply(wordLem) + data['issue_title'].astype(str).apply(cleanText).apply(wordLem)
 
 # devs = data['owner'].astype(str).apply(cleanDevText)
 # devs = devs.value_counts()
@@ -96,4 +97,12 @@ print(text)
 # print(f'The developer names is \n{devs}')
 # #print(f'The total number of devs : {compNum}')
 
-comp = data['Component']
+# data = pd.read_csv('dataset.csv')
+
+# text = data['Product'].astype(str) + ' ' + data['Component'].astype(str)
+# textNum = text.value_counts()
+# textNum = textNum[textNum > 50]
+
+# print(text)
+# print()
+# print(textNum)

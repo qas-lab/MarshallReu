@@ -54,5 +54,6 @@ class Triagers:
 testDev1 = Developers(name='Mike', amount=250, type='Debug')
 testDev1.addToDict(250, 'Debug')
 testDev1.addToDict(20, 'Core')
+name = testDev1.getName()
 
-print(testDev1.bugList)
+print(name)
