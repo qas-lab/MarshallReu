@@ -1,4 +1,7 @@
-# Bert topic model
+# This file is for creating bert models for each dev
+
+import os
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0' # Suppress the oneDNN custom operations message
 
 from bertopic import BERTopic
 from bertopic.representation import KeyBERTInspired
@@ -8,6 +11,7 @@ from bertopic.vectorizers import ClassTfidfTransformer
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.decomposition import PCA, NMF
 from sklearn.cluster import KMeans
+from sklearn.model_selection import train_test_split
 
 from umap import UMAP
 from hdbscan import HDBSCAN
@@ -15,139 +19,96 @@ import pandas as pd
 
 from scipy.cluster import hierarchy as sch
 
-# # Load and prepare data
-# data = pd.read_csv('eclipse_jdt.csv')
-# #data = pd.read_csv('mozilla_firefox.csv')
-
-# docs = data[['Title', 'Description']]
-# docs['Title'] = docs['Title'].fillna('')
-# docs['Description'] = docs['Description'].fillna('')
-# docs['Text'] = docs['Title'] + docs['Description']
-# docs = docs['Text'].tolist()
-
 # Load and prepare data
 data = pd.read_csv('dataset.csv')
 
-# docs = data['Summary']
-# docs = docs.fillna('')
-# docs = docs.tolist()
+# Get developers with more than 100 documents
+devNum = data['Assignee Real Name'].value_counts()
+devNum = devNum[devNum > 100]
 
-# docs = data[data['Assignee Real Name'] == 'Martin Aeschlimann']
-# docs = docs['Summary']
-# docs = docs.fillna('')
-# docs = docs.tolist()
-
-docs = data[data['Assignee Real Name'] == 'Curtis Windatt']
-docs = docs[['Summary','Product','Component']]
-docs['Summary'] = docs['Summary'].fillna('')
-docs['Product'] = docs['Product'].fillna('')
-docs['Component'] = docs['Component'].fillna('')
-docs['Text'] = docs['Component'] + ' ' + docs['Product'] + ' ' + docs['Summary']
-docs = docs['Text'].tolist()
-
-# groupDocs = data.groupby(['Assignee Real Name','Summary'])
-# print(groupDocs.head())
+def devDocList(name, data):
+   docs = data[data['Assignee Real Name'] == name]
+   docs = docs[['Summary', 'Product', 'Component']]
+   docs['Summary'] = docs['Summary'].fillna('')
+   docs['Product'] = docs['Product'].fillna('')
+   docs['Component'] = docs['Component'].fillna('')
+   docs['Text'] = docs['Product'] + ' ' + docs['Component'] + ' ' + docs['Summary']
+   return docs
 
 # 1. Embedding
 sentence_model = SentenceTransformer('all-mpnet-base-v2')
 
-#2. Dimensionality Reduction
-umap_model = UMAP(metric='cosine', 
-                  n_neighbors=3, # Change back to 5?
-                  min_dist=0.0)
+# 2. Dimensionality Reduction
+#umap_model = PCA(n_components=1)
+umap_model = UMAP(n_components=1,
+                  n_neighbors=15,
+                  min_dist=0.1,
+                  metric='cosine')
 
-#3. Clustering 
-hdbscan_model = HDBSCAN(min_cluster_size=60,
+# 3. Clustering 
+hdbscan_model = HDBSCAN(min_cluster_size=20,
                         min_samples=1, 
                         metric='euclidean', 
                         cluster_selection_method='leaf',
                         prediction_data=True)
-# hdbscan_model = KMeans(n_clusters=3)
 
 # 4. Token
 vec = CountVectorizer(stop_words='english',
-                      ngram_range=(1,2)) 
+                      ngram_range=(1,2))
 
 # 5. Weighting schemes
 ctif = ClassTfidfTransformer(reduce_frequent_words=True)
 
 # 6. Fine Tune
-representation = KeyBERTInspired()    
+representation = KeyBERTInspired()
 
-# Create and fit BERTopic model
-topic_model = BERTopic(embedding_model=sentence_model,          #1
-                       umap_model=umap_model,                   #2
-                       hdbscan_model=hdbscan_model,             #3
-                       vectorizer_model=vec,                    #4
-                       ctfidf_model=ctif,                       #5
-                       representation_model=representation,     #6
-                       )
 
-topics, probs = topic_model.fit_transform(docs)
+test_documents = []
 
-# topic_model.reduce_topics(docs, nr_topics=3) # reduce topics for HDBSCAN
+count = 0
 
-# Reduce Outliers
-# newTopics = topic_model.reduce_outliers(docs, topics, strategy='c-tf-idf')
+for dev in devNum.index:
 
-# Visualize topics
-intertopic = topic_model.visualize_topics()
-intertopic.write_html('intertopic.html')
+   print(f"Training model for {dev}...")
+   
+   docs_df = devDocList(dev, data)
+   
+   docTrain_df, docTest_df = train_test_split(docs_df, test_size=0.2)
+   
 
-# Get topic and document information
-document_info = topic_model.get_topic_info()
-topic_info = topic_model.get_document_info(docs)
-print(document_info)
-print(topic_info)
+   docTest_df['Developer'] = dev
+   test_documents.append(docTest_df)
+   
+  
+   docTrain = docTrain_df['Text'].tolist()
+   
+   # Create and fit BERTopic model
+   topic_model = BERTopic(embedding_model=sentence_model,          #1
+                          umap_model=umap_model,                   #2
+                          hdbscan_model=hdbscan_model,             #3
+                          vectorizer_model=vec,                    #4
+                          ctfidf_model=ctif,                       #5
+                          representation_model=representation)     #6
 
-# Hierarchical topics
-linkage_function = lambda x: sch.linkage(x, 'single', optimal_ordering=True)
-hierarchical_topics = topic_model.hierarchical_topics(docs, linkage_function=linkage_function)
-hierarchical = topic_model.visualize_hierarchy(hierarchical_topics=hierarchical_topics)
-tree = topic_model.get_topic_tree(hierarchical_topics)
-hierarchical.write_html('hierarchcalTopics.html')
+   topics, probs = topic_model.fit_transform(docTrain)
+   topicsTest, topicsProb = topic_model.transform(docTrain_df['Text'].tolist())
+   
+   # Print topic information
+   print(topic_model.get_topic_info())
+   print(topic_model.get_document_info(docTrain))
+   print(topicsProb.mean())
+   
+   # Save the topic model
+   topic_model.save(f'{count}_{dev}')
 
-# Saving topic model
-topic_model.save('bert_topic_model')
+   count += 1
 
-################################################################################################################################################################
-################################################################################################################################################################
+print("All models trained and saved.")
 
-# kmeansModel = BERTopic.load('bert_topic_model_KMeans')
-# bertBigram = BERTopic.load('bert_bigram_good_cluster')
-# bertGoodCluster2 = BERTopic.load('bert_topic_good_clusters')
-# bertHDBSCAN = BERTopic.load('bert_topic_model_HDBSCAN_238')
+# Concatenate all test documents into a single DataFrame
+test_documents_df = pd.concat(test_documents, ignore_index=True)
 
-# # # Visualize topics
-# # kmeansIntertopic = kmeansModel.visualize_topics()
-# # kmeansIntertopic.write_html('kmeansIntertopic.html')
+# Save the test documents to a CSV file
+test_documents_df.to_csv('test_documents.csv', index=False)
 
-# # bertIntertopic = bertBigram.visualize_topics()
-# # bertIntertopic.write_html('bigramIntertopic.html')
 
-# # goodCluster2 = bertGoodCluster2.visualize_topics()
-# # goodCluster2.write_html('cluster_2_intertopic.html')
-
-# # hdbscanIntertopic = bertHDBSCAN.visualize_topics()
-# # hdbscanIntertopic.write_html('hdbscanIntertopic.html')
-
-# kmeansTopicInfo = kmeansModel.get_topic_info()
-# kmeansDocInfo = kmeansModel.get_document_info(docs)
-
-# bertTopicInfo = bertBigram.get_topic_info()
-# bertDocInfo = bertBigram.get_document_info(docs)
-
-# goodTopicInfo = bertGoodCluster2.get_topic_info()
-# goodDocInfo = bertGoodCluster2.get_document_info(docs)
-
-# hdbTopicInfo = bertHDBSCAN.get_topic_info()
-# hdbDocInfo = bertHDBSCAN.get_document_info(docs)
-
-# print(f'\n{kmeansTopicInfo}\n')
-# print(f'\n{kmeansDocInfo}\n')
-# print(f'\n{bertTopicInfo}\n')
-# print(f'\n{bertDocInfo}\n')
-# print(f'\n{goodTopicInfo}\n')
-# print(f'\n{goodDocInfo}\n')
-# print(f'\n{hdbTopicInfo}\n')
-# print(f'\n{hdbDocInfo}\n')

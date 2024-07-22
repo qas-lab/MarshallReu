@@ -4,22 +4,21 @@
 Class for creating a developer and placing the devloper into a list
 '''
 class Developers:
-
-    def __init__(self, name, amount, type):
-
+    def __init__(self, name, amount):
         self.name = name
         self.amount = amount
-        self.type = type
+        self.type = list()
         self.bugList = dict()
 
     def addToDict(self, amount, type):
-
-        if type not in self.bugList.keys():
-
+        if type not in self.bugList:
             self.bugList[type] = amount
+        else:
+            self.bugList[type] += amount
         
-        return 
-    
+        if type not in self.type:
+            self.type.append(type)
+
     def getName(self):
         return self.name
     
@@ -30,13 +29,21 @@ class Developers:
         return self.amount
     
     def topBugCategory(self):
+        if not self.bugList:
+            return None
+        return max(self.bugList, key=self.bugList.get)
 
-        
+    def getBugCount(self, type):
+        return self.bugList.get(type, 0)
 
-        return 
+    def getTotalBugs(self):
+        return sum(self.bugList.values())
+
+    def __str__(self):
+        return f"Developer: {self.name}, Total Bugs: {self.getTotalBugs()}"
     
 '''
-Triage class for developers
+Triage class for developers, I am unsure how I will need to use this file
 '''
 class Triagers:
 
@@ -51,9 +58,4 @@ class Triagers:
         
         return list
 
-testDev1 = Developers(name='Mike', amount=250, type='Debug')
-testDev1.addToDict(250, 'Debug')
-testDev1.addToDict(20, 'Core')
-name = testDev1.getName()
 
-print(name)
